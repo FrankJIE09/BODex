@@ -1,0 +1,81 @@
+world:
+  type: scene_cfg
+#  template_path: object/DGN_2k/scene_cfg/**/floating/*.npy
+#  template_path: object/DGN_2k/scene_cfg/core_bottle_1a7ba1f4c892e2da30711cdbdbc73924/floating/scale006.npy
+  template_path: object/tmr_100w_01_c/floating/scale008.npy
+  start: 0
+  end: 100
+
+# 机器人配置文件
+robot_file: "right_wujihand_sim.yml"
+robot_file_with_arm: null  # 如果后续需要加机械臂，可以配置
+
+# 任务配置文件
+base_cfg_file: "base_grasp.yml"
+particle_file: "particle_grasp_debug.yml"
+gradient_file: "gradient_grasp_fc.yml"
+
+# 实验名称
+exp_name: 'debug'
+
+# 种子数量
+seed_num: 20
+
+# 种子生成器配置
+seeder_cfg:
+  obj_sample:
+    num: 128
+    inflate: 0.1
+    convex_hull: True
+    collision_free: True
+  ik_init_q:
+  load_path:
+  skip_transfer: False
+  t:
+  r:
+  # 初始关节角度：20个关节，建议从半张开状态开始
+  # 格式：[finger1的4个关节, finger2的4个关节, finger3的4个关节, finger4的4个关节, finger5的4个关节]
+  q: [0.5, 0.3, 0.2, 0.1,  0.5, 0.3, 0.2, 0.1,  0.5, 0.3, 0.2, 0.1,  0.5, 0.3, 0.2, 0.1,  0.5, 0.3, 0.2, 0.1]
+  jitter_angle: [[-180, -15, -15], [180, 15, 15]]
+  jitter_dist: [[0.0, -0.03, -0.03], [0.03, 0.03, 0.03]]
+
+# 抓取接触策略
+grasp_contact_strategy:
+  # 接触点名称：5个指尖，每个指尖使用第0个接触点（通常是第一个mesh）
+  contact_points_name:
+    - 'finger1_tip_link/0'
+    - 'finger2_tip_link/0'
+    - 'finger3_tip_link/0'
+    - 'finger4_tip_link/0'
+    - 'finger5_tip_link/0'
+  opt_progress: [0.0, 0.6, 0.8]
+  distance: [0.01, 0.01, 0.0]
+  contact_query_mode: [-1, 0, 0]
+  save_qpos: [False, True]
+  max_ge_stage: 0
+
+# 抓取配置
+grasp_cfg:
+  task_dict:
+    f: [0, 0, 1]
+    p: [0, 0, 0]
+    t: [0, 0, 0]
+    gamma: 180
+  ge_param:
+    type: 'qp'
+    miu_coef: [0.1, 0]
+    solver_type: 'batch_reluqp'
+    k_lower: 0.2
+    pressure_constraints:   # [contact_id_list, lower]
+      # 所有5个接触点一起约束
+      [[[0, 1, 2, 3, 4], 1.0],
+       # 前3个手指约束
+       [[0, 1, 2], 0.4],
+       # 第5个手指（小指）单独约束
+       [[4], 0.5],
+      ]
+    enable_density: False
+    solve_interval: 5
+
+# 运动生成初始配置（如果后续需要加机械臂）
+mogen_init: null

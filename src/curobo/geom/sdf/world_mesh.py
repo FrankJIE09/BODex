@@ -174,20 +174,32 @@ class WorldMeshCollision(WorldPrimitiveCollision):
             self._contact_scene_obb_param = []
             for i, world in enumerate(world_model):
                 om = world.mesh[self._eval_mesh_idx[i]]
-                obj_convex_decomp = UrdfKinematicsParser(om.urdf_path, coacd_obj_version=True)
-                for k, v in obj_convex_decomp._robot.link_map.items():
-                    assert len(v.visuals) == 1
-                    m = v.visuals[0].geometry.mesh
-                    abs_file_path = obj_convex_decomp._robot._filename_handler(fname=m.filename)
-                    obj_scale = np.array(m.scale) * self._contact_mesh_scales[i]
-                    hppmesh = loadConvexMeshCpp(abs_file_path, obj_scale)
-                    obb_param = getBoundingPrimitive(abs_file_path, obj_scale, 'obb')
-                    self._contact_scene_convex_meshes.append(hppmesh)
-                    self._contact_scene_mesh_num.append(i)
-                    self._contact_scene_obb_param.append(obb_param)
-            self._contact_scene_obb_param = self.tensor_args.to_device(torch.stack(self._contact_scene_obb_param))
-            self._contact_scene_mesh_num = self.tensor_args.to_device(np.stack(self._contact_scene_mesh_num)).long()
-            self._contact_scene_poses = self._contact_mesh_poses[self._contact_scene_mesh_num]
+                # 只有当 urdf_path 存在且不为 None 时才使用 URDF 加载
+                if om.urdf_path is not None:
+                    obj_convex_decomp = UrdfKinematicsParser(om.urdf_path, coacd_obj_version=True)
+                    for k, v in obj_convex_decomp._robot.link_map.items():
+                        assert len(v.visuals) == 1
+                        m = v.visuals[0].geometry.mesh
+                        abs_file_path = obj_convex_decomp._robot._filename_handler(fname=m.filename)
+                        obj_scale = np.array(m.scale) * self._contact_mesh_scales[i]
+                        hppmesh = loadConvexMeshCpp(abs_file_path, obj_scale)
+                        obb_param = getBoundingPrimitive(abs_file_path, obj_scale, 'obb')
+                        self._contact_scene_convex_meshes.append(hppmesh)
+                        self._contact_scene_mesh_num.append(i)
+                        self._contact_scene_obb_param.append(obb_param)
+                else:
+                    # 如果没有 urdf_path，直接使用 file_path 加载 mesh
+                    if om.file_path is not None:
+                        obj_scale = np.array([1., 1., 1.]) * (om.scale if om.scale is not None else np.array([1., 1., 1.]))
+                        hppmesh = loadConvexMeshCpp(om.file_path, obj_scale)
+                        obb_param = getBoundingPrimitive(om.file_path, obj_scale, 'obb')
+                        self._contact_scene_convex_meshes.append(hppmesh)
+                        self._contact_scene_mesh_num.append(i)
+                        self._contact_scene_obb_param.append(obb_param)
+            if len(self._contact_scene_obb_param) > 0:
+                self._contact_scene_obb_param = self.tensor_args.to_device(torch.stack(self._contact_scene_obb_param))
+                self._contact_scene_mesh_num = self.tensor_args.to_device(np.stack(self._contact_scene_mesh_num)).long()
+                self._contact_scene_poses = self._contact_mesh_poses[self._contact_scene_mesh_num]
 
         return 
     

@@ -1,0 +1,7 @@
+# Wujihand 右手姿态转换配置
+# axis: [palm, thumb, finger]
+# center: root of the palm
+
+palm_link:
+  r: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]  # 单位旋转矩阵（可根据实际情况调整）
+  t: [0.0, 0.0, 0.0]  # 零平移（可根据实际情况调整）

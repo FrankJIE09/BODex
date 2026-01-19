@@ -40,12 +40,15 @@ def scenecfg2worldcfg(scene_cfg):
         if obj_cfg["type"] == "rigid_object":
             if "mesh" not in world_cfg:
                 world_cfg["mesh"] = {}
-            world_cfg["mesh"][scene_cfg["scene_id"] + obj_name] = {
+            mesh_config = {
                 "scale": obj_cfg["scale"],
                 "pose": obj_cfg["pose"],
                 "file_path": obj_cfg["file_path"],
-                "urdf_path": obj_cfg["urdf_path"],
             }
+            # urdf_path 是可选的
+            if "urdf_path" in obj_cfg:
+                mesh_config["urdf_path"] = obj_cfg["urdf_path"]
+            world_cfg["mesh"][scene_cfg["scene_id"] + obj_name] = mesh_config
         elif obj_cfg["type"] == "plane":
             if "cuboid" not in world_cfg:
                 world_cfg["cuboid"] = {}
@@ -85,8 +88,10 @@ class WorldConfigDataset(Dataset):
 
         json_data = load_json(obj_cfg["info_path"])
         obj_rot = transforms3d.quaternions.quat2mat(obj_pose[3:])
-        gravity_center = obj_pose[:3] + obj_rot @ json_data["gravity_center"] * obj_scale
-        obb_length = np.linalg.norm(obj_scale * json_data["obb"]) / 2
+        # 将列表转换为 numpy 数组以进行元素级运算
+        obj_scale = np.array(obj_scale)
+        gravity_center = obj_pose[:3] + obj_rot @ (np.array(json_data["gravity_center"]) * obj_scale)
+        obb_length = np.linalg.norm(obj_scale * np.array(json_data["obb"])) / 2
 
         return {
             "scene_path": scene_path,

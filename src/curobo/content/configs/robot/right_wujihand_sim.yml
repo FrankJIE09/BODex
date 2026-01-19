@@ -1,0 +1,274 @@
+robot_cfg:
+  robot_color: [0.86, 0.08, 0.08, 1.0]
+
+  kinematics:
+    use_usd_kinematics: False
+
+    # 这两个路径都是相对于 src/curobo/content/assets/
+    urdf_path: "robot/wujihand-urdf/urdf/right.urdf"
+    asset_root_path: "robot/wujihand-urdf"
+
+    # 对于手，一般让它“浮动”在世界里做抓取
+    use_root_pose: True
+    hand_pose_transfer_path: "hand_pose_transfer/right_wujihand.yml"
+
+    # 你的 URDF 里 base link 就是 palm_link（文件里第一个 link）
+    base_link: "palm_link"
+    ee_link: "palm_link"
+
+    # 用于抓取/接触的末端 link（推荐用 5 个指尖）
+    link_names:
+      - "finger1_tip_link"
+      - "finger2_tip_link"
+      - "finger3_tip_link"
+      - "finger4_tip_link"
+      - "finger5_tip_link"
+
+    # 下面这些用于加载 mesh、碰撞/接触计算（你这个手每个 link 基本都有 mesh）
+    mesh_link_names:
+      - "palm_link"
+      - "finger1_link1"
+      - "finger1_link2"
+      - "finger1_link3"
+      - "finger1_link4"
+      - "finger1_tip_link"
+      - "finger2_link1"
+      - "finger2_link2"
+      - "finger2_link3"
+      - "finger2_link4"
+      - "finger2_tip_link"
+      - "finger3_link1"
+      - "finger3_link2"
+      - "finger3_link3"
+      - "finger3_link4"
+      - "finger3_tip_link"
+      - "finger4_link1"
+      - "finger4_link2"
+      - "finger4_link3"
+      - "finger4_link4"
+      - "finger4_tip_link"
+      - "finger5_link1"
+      - "finger5_link2"
+      - "finger5_link3"
+      - "finger5_link4"
+      - "finger5_tip_link"
+
+    collision_link_names:
+      - "palm_link"
+      - "finger1_link1"
+      - "finger1_link2"
+      - "finger1_link3"
+      - "finger1_link4"
+      - "finger1_tip_link"
+      - "finger2_link1"
+      - "finger2_link2"
+      - "finger2_link3"
+      - "finger2_link4"
+      - "finger2_tip_link"
+      - "finger3_link1"
+      - "finger3_link2"
+      - "finger3_link3"
+      - "finger3_link4"
+      - "finger3_tip_link"
+      - "finger4_link1"
+      - "finger4_link2"
+      - "finger4_link3"
+      - "finger4_link4"
+      - "finger4_tip_link"
+      - "finger5_link1"
+      - "finger5_link2"
+      - "finger5_link3"
+      - "finger5_link4"
+      - "finger5_tip_link"
+
+    # 碰撞球配置（基于链接的惯性信息估算）
+    collision_spheres:
+      # 手掌 - 使用多个球覆盖整个手掌区域
+      palm_link:
+        - "center": [0.0, 0.0, 0.02]
+          "radius": 0.025
+        - "center": [0.02, 0.0, 0.02]
+          "radius": 0.02
+        - "center": [-0.02, 0.0, 0.02]
+          "radius": 0.02
+        - "center": [0.0, 0.02, 0.02]
+          "radius": 0.02
+        - "center": [0.0, -0.02, 0.02]
+          "radius": 0.02
+      
+      # Finger 1 (拇指或食指)
+      finger1_link1:
+        - "center": [0.0, 0.0, 0.008]
+          "radius": 0.012
+      finger1_link2:
+        - "center": [0.0, 0.0, 0.015]
+          "radius": 0.012
+      finger1_link3:
+        - "center": [0.0, 0.0, 0.013]
+          "radius": 0.01
+      finger1_link4:
+        - "center": [0.0, 0.0, 0.01]
+          "radius": 0.01
+      finger1_tip_link:
+        - "center": [0.0, 0.0, 0.008]
+          "radius": 0.008
+      
+      # Finger 2
+      finger2_link1:
+        - "center": [0.0, 0.0, 0.008]
+          "radius": 0.012
+      finger2_link2:
+        - "center": [0.0, 0.0, 0.015]
+          "radius": 0.012
+      finger2_link3:
+        - "center": [0.0, 0.0, 0.013]
+          "radius": 0.01
+      finger2_link4:
+        - "center": [0.0, 0.0, 0.01]
+          "radius": 0.01
+      finger2_tip_link:
+        - "center": [0.0, 0.0, 0.008]
+          "radius": 0.008
+      
+      # Finger 3
+      finger3_link1:
+        - "center": [0.0, 0.0, 0.008]
+          "radius": 0.012
+      finger3_link2:
+        - "center": [0.0, 0.0, 0.015]
+          "radius": 0.012
+      finger3_link3:
+        - "center": [0.0, 0.0, 0.013]
+          "radius": 0.01
+      finger3_link4:
+        - "center": [0.0, 0.0, 0.01]
+          "radius": 0.01
+      finger3_tip_link:
+        - "center": [0.0, 0.0, 0.008]
+          "radius": 0.008
+      
+      # Finger 4
+      finger4_link1:
+        - "center": [0.0, 0.0, 0.008]
+          "radius": 0.012
+      finger4_link2:
+        - "center": [0.0, 0.0, 0.015]
+          "radius": 0.012
+      finger4_link3:
+        - "center": [0.0, 0.0, 0.013]
+          "radius": 0.01
+      finger4_link4:
+        - "center": [0.0, 0.0, 0.01]
+          "radius": 0.01
+      finger4_tip_link:
+        - "center": [0.0, 0.0, 0.008]
+          "radius": 0.008
+      
+      # Finger 5 (小指)
+      finger5_link1:
+        - "center": [0.0, 0.0, 0.008]
+          "radius": 0.012
+      finger5_link2:
+        - "center": [0.0, 0.0, 0.015]
+          "radius": 0.012
+      finger5_link3:
+        - "center": [0.0, 0.0, 0.013]
+          "radius": 0.01
+      finger5_link4:
+        - "center": [0.0, 0.0, 0.01]
+          "radius": 0.01
+      finger5_tip_link:
+        - "center": [0.0, 0.0, 0.008]
+          "radius": 0.008
+    
+    collision_sphere_buffer: 0.0
+    extra_collision_spheres: {}
+    
+    # 自碰撞忽略配置（相邻链接之间可以忽略碰撞）
+    self_collision_ignore:
+      'palm_link': ['finger1_link1', 'finger2_link1', 'finger3_link1', 'finger4_link1', 'finger5_link1']
+      'finger1_link1': ['finger1_link2']
+      'finger1_link2': ['finger1_link3']
+      'finger1_link3': ['finger1_link4']
+      'finger1_link4': ['finger1_tip_link']
+      'finger2_link1': ['finger2_link2']
+      'finger2_link2': ['finger2_link3']
+      'finger2_link3': ['finger2_link4']
+      'finger2_link4': ['finger2_tip_link']
+      'finger3_link1': ['finger3_link2']
+      'finger3_link2': ['finger3_link3']
+      'finger3_link3': ['finger3_link4']
+      'finger3_link4': ['finger3_tip_link']
+      'finger4_link1': ['finger4_link2']
+      'finger4_link2': ['finger4_link3']
+      'finger4_link3': ['finger4_link4']
+      'finger4_link4': ['finger4_tip_link']
+      'finger5_link1': ['finger5_link2']
+      'finger5_link2': ['finger5_link3']
+      'finger5_link3': ['finger5_link4']
+      'finger5_link4': ['finger5_tip_link']
+    
+    # 自碰撞缓冲区（指尖需要稍大的缓冲区以避免误报）
+    self_collision_buffer:
+      'palm_link': 0.0
+      'finger1_link1': 0.0
+      'finger1_link2': 0.0
+      'finger1_link3': 0.0
+      'finger1_link4': 0.0
+      'finger1_tip_link': 0.001
+      'finger2_link1': 0.0
+      'finger2_link2': 0.0
+      'finger2_link3': 0.0
+      'finger2_link4': 0.0
+      'finger2_tip_link': 0.001
+      'finger3_link1': 0.0
+      'finger3_link2': 0.0
+      'finger3_link3': 0.0
+      'finger3_link4': 0.0
+      'finger3_tip_link': 0.001
+      'finger4_link1': 0.0
+      'finger4_link2': 0.0
+      'finger4_link3': 0.0
+      'finger4_link4': 0.0
+      'finger4_tip_link': 0.001
+      'finger5_link1': 0.0
+      'finger5_link2': 0.0
+      'finger5_link3': 0.0
+      'finger5_link4': 0.0
+      'finger5_tip_link': 0.001
+
+    # usd 可先不填（不影响抓取求解），或后续再转 usd
+    usd_path: ""
+    usd_robot_root: "/robot"
+    isaac_usd_path: ""
+    usd_flip_joints: {}
+    usd_flip_joint_limits: []
+
+    cspace:
+      joint_names:
+        - "finger1_joint1"
+        - "finger1_joint2"
+        - "finger1_joint3"
+        - "finger1_joint4"
+        - "finger2_joint1"
+        - "finger2_joint2"
+        - "finger2_joint3"
+        - "finger2_joint4"
+        - "finger3_joint1"
+        - "finger3_joint2"
+        - "finger3_joint3"
+        - "finger3_joint4"
+        - "finger4_joint1"
+        - "finger4_joint2"
+        - "finger4_joint3"
+        - "finger4_joint4"
+        - "finger5_joint1"
+        - "finger5_joint2"
+        - "finger5_joint3"
+        - "finger5_joint4"
+
+      retract_config: [0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0]
+      null_space_weight: [1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1]
+      cspace_distance_weight: [1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1]
+      max_jerk: 500.0
+      max_acceleration: 15.0
