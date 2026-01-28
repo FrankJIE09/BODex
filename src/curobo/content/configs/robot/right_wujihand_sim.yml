@@ -1,30 +1,64 @@
+# ============================================================================
+# 机器人配置文件 - 右手五指灵巧手 (WuJiHand Right Hand)
+# ============================================================================
+# 此配置文件定义了右手五指灵巧手的完整参数，包括运动学、碰撞检测、自碰撞
+# 配置和配置空间（C-Space）等设置，用于抓取规划和运动控制。
+# ============================================================================
+
 robot_cfg:
+  # 机器人可视化颜色配置
+  # RGBA格式，取值范围[0.0, 1.0]
+  # 当前设置为红色: R=0.86, G=0.08, B=0.08, A=1.0 (完全不透明)
   robot_color: [0.86, 0.08, 0.08, 1.0]
 
+  # ========================================================================
+  # 运动学配置 (Kinematics Configuration)
+  # ========================================================================
   kinematics:
+    # 是否使用USD格式的运动学模型
+    # False: 使用URDF格式（当前配置）
+    # True: 使用USD格式（用于Isaac Sim等场景）
     use_usd_kinematics: False
 
-    # 这两个路径都是相对于 src/curobo/content/assets/
+    # URDF文件路径配置
+    # 注意：这两个路径都是相对于 src/curobo/content/assets/ 目录的
+    # urdf_path: URDF模型文件的完整路径，定义了机器人的几何结构和运动学
     urdf_path: "robot/wujihand-urdf/urdf/right.urdf"
+    # asset_root_path: 机器人资源文件的根目录，包含mesh、纹理等资源
     asset_root_path: "robot/wujihand-urdf"
 
-    # 对于手，一般让它“浮动”在世界里做抓取
+    # 根位姿配置（用于浮动基座）
+    # 对于灵巧手，通常需要让它"浮动"在世界坐标系中进行抓取操作
+    # use_root_pose: True 表示启用根位姿控制，允许手掌在6DOF空间中自由移动
     use_root_pose: True
+    # hand_pose_transfer_path: 手部位姿转换配置文件路径
+    # 用于定义手掌坐标系到世界坐标系的转换关系
     hand_pose_transfer_path: "hand_pose_transfer/right_wujihand.yml"
 
-    # 你的 URDF 里 base link 就是 palm_link（文件里第一个 link）
+    # 基础链接和末端执行器配置
+    # base_link: 机器人的基础链接（根链接），通常是手掌
+    # 在URDF文件中，palm_link是第一个定义的link，作为整个手的基础
     base_link: "palm_link"
+    # ee_link: 末端执行器链接（End Effector Link）
+    # 对于灵巧手，通常将手掌作为末端执行器，因为抓取时主要控制手掌位姿
     ee_link: "palm_link"
 
-    # 用于抓取/接触的末端 link（推荐用 5 个指尖）
+    # 末端链接列表（用于抓取和接触检测）
+    # 这些链接用于定义抓取时的接触点，推荐使用5个指尖链接
+    # 在抓取规划中，系统会考虑这些链接与物体的接触关系
     link_names:
-      - "finger1_tip_link"
-      - "finger2_tip_link"
-      - "finger3_tip_link"
-      - "finger4_tip_link"
-      - "finger5_tip_link"
+      - "finger1_tip_link"  # 手指1（拇指）指尖
+      - "finger2_tip_link"  # 手指2（食指）指尖
+      - "finger3_tip_link"  # 手指3（中指）指尖
+      - "finger4_tip_link"  # 手指4（无名指）指尖
+      - "finger5_tip_link"  # 手指5（小指）指尖
 
-    # 下面这些用于加载 mesh、碰撞/接触计算（你这个手每个 link 基本都有 mesh）
+    # Mesh链接列表（用于加载3D模型和可视化）
+    # 这些链接包含mesh文件，用于：
+    # 1. 3D可视化渲染
+    # 2. 精确的碰撞检测（如果启用mesh碰撞）
+    # 3. 接触力计算
+    # 注意：此手部模型每个链接都包含mesh文件，因此需要列出所有链接
     mesh_link_names:
       - "palm_link"
       - "finger1_link1"
@@ -53,6 +87,12 @@ robot_cfg:
       - "finger5_link4"
       - "finger5_tip_link"
 
+    # 碰撞检测链接列表（用于碰撞检测计算）
+    # 这些链接参与碰撞检测，包括：
+    # 1. 与环境障碍物的碰撞检测
+    # 2. 自碰撞检测（手指之间的碰撞）
+    # 3. 与抓取物体的碰撞检测
+    # 通常与mesh_link_names相同，因为所有链接都需要进行碰撞检测
     collision_link_names:
       - "palm_link"
       - "finger1_link1"
@@ -81,110 +121,166 @@ robot_cfg:
       - "finger5_link4"
       - "finger5_tip_link"
 
-    # 碰撞球配置（基于链接的惯性信息估算）
+    # ========================================================================
+    # 碰撞球配置 (Collision Spheres Configuration)
+    # ========================================================================
+    # 碰撞球用于快速且高效的碰撞检测。每个链接用多个球体近似表示其几何形状。
+    # 配置原则：
+    # 1. 球的中心位置（center）相对于链接坐标系，单位：米
+    # 2. 球的半径（radius）应覆盖链接的几何形状，单位：米
+    # 3. 对于较长的链接，使用多个球体密集覆盖以提高精度
+    # 4. 球的半径应略大于实际几何尺寸，以确保安全裕度
+    # ========================================================================
     collision_spheres:
-      # 手掌 - 使用多个球覆盖整个手掌区域
-      palm_link:
-        - "center": [0.0, 0.0, 0.02]
-          "radius": 0.025
-        - "center": [0.02, 0.0, 0.02]
-          "radius": 0.02
-        - "center": [-0.02, 0.0, 0.02]
-          "radius": 0.02
-        - "center": [0.0, 0.02, 0.02]
-          "radius": 0.02
-        - "center": [0.0, -0.02, 0.02]
-          "radius": 0.02
-      
-      # Finger 1 (拇指或食指)
-      finger1_link1:
-        - "center": [0.0, 0.0, 0.008]
-          "radius": 0.012
-      finger1_link2:
-        - "center": [0.0, 0.0, 0.015]
-          "radius": 0.012
-      finger1_link3:
-        - "center": [0.0, 0.0, 0.013]
-          "radius": 0.01
-      finger1_link4:
-        - "center": [0.0, 0.0, 0.01]
-          "radius": 0.01
-      finger1_tip_link:
-        - "center": [0.0, 0.0, 0.008]
-          "radius": 0.008
-      
-      # Finger 2
-      finger2_link1:
-        - "center": [0.0, 0.0, 0.008]
-          "radius": 0.012
-      finger2_link2:
-        - "center": [0.0, 0.0, 0.015]
-          "radius": 0.012
-      finger2_link3:
-        - "center": [0.0, 0.0, 0.013]
-          "radius": 0.01
-      finger2_link4:
-        - "center": [0.0, 0.0, 0.01]
-          "radius": 0.01
-      finger2_tip_link:
-        - "center": [0.0, 0.0, 0.008]
-          "radius": 0.008
-      
-      # Finger 3
-      finger3_link1:
-        - "center": [0.0, 0.0, 0.008]
-          "radius": 0.012
-      finger3_link2:
-        - "center": [0.0, 0.0, 0.015]
-          "radius": 0.012
-      finger3_link3:
-        - "center": [0.0, 0.0, 0.013]
-          "radius": 0.01
-      finger3_link4:
-        - "center": [0.0, 0.0, 0.01]
-          "radius": 0.01
-      finger3_tip_link:
-        - "center": [0.0, 0.0, 0.008]
-          "radius": 0.008
-      
-      # Finger 4
-      finger4_link1:
-        - "center": [0.0, 0.0, 0.008]
-          "radius": 0.012
-      finger4_link2:
-        - "center": [0.0, 0.0, 0.015]
-          "radius": 0.012
-      finger4_link3:
-        - "center": [0.0, 0.0, 0.013]
-          "radius": 0.01
-      finger4_link4:
-        - "center": [0.0, 0.0, 0.01]
-          "radius": 0.01
-      finger4_tip_link:
-        - "center": [0.0, 0.0, 0.008]
-          "radius": 0.008
-      
-      # Finger 5 (小指)
-      finger5_link1:
-        - "center": [0.0, 0.0, 0.008]
-          "radius": 0.012
-      finger5_link2:
-        - "center": [0.0, 0.0, 0.015]
-          "radius": 0.012
-      finger5_link3:
-        - "center": [0.0, 0.0, 0.013]
-          "radius": 0.01
-      finger5_link4:
-        - "center": [0.0, 0.0, 0.01]
-          "radius": 0.01
-      finger5_tip_link:
-        - "center": [0.0, 0.0, 0.008]
-          "radius": 0.008
+      palm_link: 
+        - center: [-0.001, -0.028, 0.059]
+          radius: 0.01032
+        - center: [-0.003, -0.016, 0.035]
+          radius: 0.01256
+        - center: [-0.001, -0.013, 0.007]
+          radius: 0.01276
+        - center: [-0.006, -0.005, 0.067]
+          radius: 0.01056
+        - center: [-0.002, 0.015, 0.01]
+          radius: 0.01244
+        - center: [-0.004, 0.016, 0.041]
+          radius: 0.01204
+        - center: [-0.005, 0.022, 0.071]
+          radius: 0.01064
+      finger1_link1: 
+        - center: [-0.004, -0.002, 0.009]
+          radius: 0.0088
+      finger1_link2: 
+        - center: [0.001, 0.0, 0.006]
+          radius: 0.00792
+        - center: [0.001, 0.0, 0.028]
+          radius: 0.00792
+      finger1_link3: 
+        - center: [-0.001, 0.0, 0.004]
+          radius: 0.00781
+        - center: [-0.001, 0.0, 0.024]
+          radius: 0.00781
+      finger1_link4: 
+        - center: [-0.001, 0.0, 0.0]
+          radius: 0.0077
+        - center: [-0.001, 0.0, 0.012]
+          radius: 0.0077
+      finger1_tip_link: 
+        - center: [0.0, 0.0, -0.003]
+          radius: 0.0066
+      finger2_link1: 
+        - center: [-0.004, 0.0, 0.001]
+          radius: 0.00726
+      finger2_link2: 
+        - center: [-0.006, 0.0, 0.004]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.022]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.04]
+          radius: 0.00781
+      finger2_link3: 
+        - center: [-0.001, 0.0, 0.006]
+          radius: 0.00781
+        - center: [-0.001, 0.0, 0.025]
+          radius: 0.00781
+      finger2_link4: 
+        - center: [-0.001, 0.0, 0.0]
+          radius: 0.0077
+        - center: [-0.001, 0.0, 0.007]
+          radius: 0.0077
+      finger2_tip_link: 
+        - center: [0.0, 0.0, -0.008]
+          radius: 0.0066
+      finger3_link1: 
+        - center: [-0.004, 0.0, 0.001]
+          radius: 0.00726
+      finger3_link2: 
+        - center: [-0.006, 0.0, 0.004]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.022]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.04]
+          radius: 0.00781
+      finger3_link3: 
+        - center: [-0.001, 0.0, 0.006]
+          radius: 0.00781
+        - center: [-0.001, 0.0, 0.025]
+          radius: 0.00781
+      finger3_link4: 
+        - center: [-0.001, 0.0, 0.0]
+          radius: 0.0077
+        - center: [-0.001, 0.0, 0.007]
+          radius: 0.0077
+      finger3_tip_link: 
+        - center: [0.0, 0.0, -0.007]
+          radius: 0.0066
+      finger4_link1: 
+        - center: [-0.004, 0.0, 0.001]
+          radius: 0.00726
+      finger4_link2: 
+        - center: [-0.006, 0.0, 0.004]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.022]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.04]
+          radius: 0.00781
+      finger4_link3: 
+        - center: [-0.001, 0.0, 0.006]
+          radius: 0.00781
+        - center: [-0.001, 0.0, 0.025]
+          radius: 0.00781
+      finger4_link4: 
+        - center: [-0.001, 0.0, 0.0]
+          radius: 0.0077
+        - center: [-0.001, 0.0, 0.007]
+          radius: 0.0077
+      finger4_tip_link: 
+        - center: [0.0, 0.0, -0.007]
+          radius: 0.0066
+      finger5_link1: 
+        - center: [-0.004, 0.0, 0.001]
+          radius: 0.00726
+      finger5_link2: 
+        - center: [-0.006, 0.0, 0.004]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.022]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.04]
+          radius: 0.00781
+      finger5_link3: 
+        - center: [-0.001, 0.0, 0.006]
+          radius: 0.00781
+        - center: [-0.001, 0.0, 0.025]
+          radius: 0.00781
+      finger5_link4: 
+        - center: [-0.001, 0.0, 0.0]
+          radius: 0.0077
+        - center: [-0.001, 0.0, 0.007]
+          radius: 0.0077
+      finger5_tip_link: 
+        - center: [0.0, 0.0, -0.007]
+          radius: 0.0066
+
+
     
+    # 碰撞球全局缓冲区（单位：米）
+    # 为所有碰撞球添加额外的安全裕度，避免误报碰撞
+    # 0.0表示不添加额外缓冲区（碰撞球半径已经包含了安全裕度）
     collision_sphere_buffer: 0.0
+    # 额外的碰撞球配置（用于特殊场景）
+    # 可以为特定链接添加额外的碰撞球，当前为空
     extra_collision_spheres: {}
     
-    # 自碰撞忽略配置（相邻链接之间可以忽略碰撞）
+    # ========================================================================
+    # 自碰撞忽略配置 (Self-Collision Ignore Configuration)
+    # ========================================================================
+    # 定义哪些链接对之间应该忽略碰撞检测
+    # 原因：相邻链接之间通过关节连接，在物理上不可能发生碰撞
+    # 配置原则：
+    # 1. 相邻的父子链接之间应忽略碰撞（如link1和link2）
+    # 2. 手掌与各手指的第一段链接之间应忽略碰撞（因为它们直接连接）
+    # 3. 忽略这些碰撞可以提高计算效率，避免误报
+    # ========================================================================
     self_collision_ignore:
       'palm_link': ['finger1_link1', 'finger2_link1', 'finger3_link1', 'finger4_link1', 'finger5_link1']
       'finger1_link1': ['finger1_link2']
@@ -206,9 +302,18 @@ robot_cfg:
       'finger5_link1': ['finger5_link2']
       'finger5_link2': ['finger5_link3']
       'finger5_link3': ['finger5_link4']
-      'finger5_link4': ['finger5_tip_link']
+      'finger5_link4': ['finger5_tip_link']  # finger5的link4与tip_link相邻，忽略碰撞
     
-    # 自碰撞缓冲区（指尖需要稍大的缓冲区以避免误报）
+    # ========================================================================
+    # 自碰撞缓冲区配置 (Self-Collision Buffer Configuration)
+    # ========================================================================
+    # 为每个链接设置自碰撞检测时的缓冲区大小（单位：米）
+    # 作用：在自碰撞检测时，两个链接之间的距离需要大于缓冲区之和才算无碰撞
+    # 配置说明：
+    # - 大部分链接设置为0.0，使用默认的碰撞检测精度
+    # - 指尖链接设置为0.001m（1mm），因为指尖较小且容易误报碰撞
+    #   增加缓冲区可以避免指尖之间的误报碰撞，提高抓取规划的稳定性
+    # ========================================================================
     self_collision_buffer:
       'palm_link': 0.0
       'finger1_link1': 0.0
@@ -235,40 +340,85 @@ robot_cfg:
       'finger5_link2': 0.0
       'finger5_link3': 0.0
       'finger5_link4': 0.0
-      'finger5_tip_link': 0.001
+      'finger5_tip_link': 0.001  # 小指指尖，1mm缓冲区避免误报
 
-    # usd 可先不填（不影响抓取求解），或后续再转 usd
+    # ========================================================================
+    # USD格式配置 (USD Format Configuration)
+    # ========================================================================
+    # USD（Universal Scene Description）是NVIDIA Isaac Sim使用的场景描述格式
+    # 注意：这些配置可以暂时不填，不影响基于URDF的抓取求解
+    # 如果需要在Isaac Sim中可视化或仿真，可以后续转换为USD格式
+    # ========================================================================
+    # USD文件路径（如果使用USD格式）
     usd_path: ""
+    # USD场景中机器人的根节点路径
     usd_robot_root: "/robot"
+    # Isaac Sim专用的USD路径
     isaac_usd_path: ""
+    # 需要翻转的关节列表（用于处理坐标系不一致的问题）
     usd_flip_joints: {}
+    # 需要翻转关节限位的关节列表
     usd_flip_joint_limits: []
 
+    # ========================================================================
+    # 配置空间配置 (Configuration Space / C-Space Configuration)
+    # ========================================================================
+    # C-Space定义了机器人的关节空间，用于运动规划和优化
+    # ========================================================================
     cspace:
+      # 关节名称列表（按顺序定义）
+      # 定义了参与运动规划的20个关节（5个手指 × 4个关节/手指）
+      # 顺序必须与后续的retract_config、null_space_weight等数组一一对应
       joint_names:
-        - "finger1_joint1"
-        - "finger1_joint2"
-        - "finger1_joint3"
-        - "finger1_joint4"
-        - "finger2_joint1"
-        - "finger2_joint2"
-        - "finger2_joint3"
-        - "finger2_joint4"
-        - "finger3_joint1"
-        - "finger3_joint2"
-        - "finger3_joint3"
-        - "finger3_joint4"
-        - "finger4_joint1"
-        - "finger4_joint2"
-        - "finger4_joint3"
-        - "finger4_joint4"
-        - "finger5_joint1"
-        - "finger5_joint2"
-        - "finger5_joint3"
-        - "finger5_joint4"
+        - "finger1_joint1"  # 手指1的第1个关节
+        - "finger1_joint2"  # 手指1的第2个关节
+        - "finger1_joint3"  # 手指1的第3个关节
+        - "finger1_joint4"  # 手指1的第4个关节
+        - "finger2_joint1"  # 手指2的第1个关节
+        - "finger2_joint2"  # 手指2的第2个关节
+        - "finger2_joint3"  # 手指2的第3个关节
+        - "finger2_joint4"  # 手指2的第4个关节
+        - "finger3_joint1"  # 手指3的第1个关节
+        - "finger3_joint2"  # 手指3的第2个关节
+        - "finger3_joint3"  # 手指3的第3个关节
+        - "finger3_joint4"  # 手指3的第4个关节
+        - "finger4_joint1"  # 手指4的第1个关节
+        - "finger4_joint2"  # 手指4的第2个关节
+        - "finger4_joint3"  # 手指4的第3个关节
+        - "finger4_joint4"  # 手指4的第4个关节
+        - "finger5_joint1"  # 手指5的第1个关节
+        - "finger5_joint2"  # 手指5的第2个关节
+        - "finger5_joint3"  # 手指5的第3个关节
+        - "finger5_joint4"  # 手指5的第4个关节
 
+      # 回退配置（Retract Configuration）
+      # 定义机器人的"安全"或"初始"姿态，所有关节角度为0（完全伸直）
+      # 当需要回退或重置时，机器人会回到这个配置
+      # 数组长度必须与joint_names一致，按顺序对应每个关节的角度（单位：弧度）
       retract_config: [0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0]
+      
+      # 零空间权重（Null Space Weight）
+      # 用于冗余度优化，当机器人有冗余自由度时，控制如何利用零空间
+      # 权重越大，该关节在零空间优化中的影响越大
+      # 当前所有关节权重为1，表示均匀处理
+      # 数组长度必须与joint_names一致
       null_space_weight: [1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1]
+      
+      # 配置空间距离权重（C-Space Distance Weight）
+      # 用于计算配置空间中的距离度量，影响路径规划中的距离计算
+      # 权重越大，该关节在距离计算中的贡献越大
+      # 当前所有关节权重为1，表示均匀处理
+      # 数组长度必须与joint_names一致
       cspace_distance_weight: [1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1]
+      
+      # 最大加加速度（Maximum Jerk）
+      # 单位：rad/s³（弧度每秒的三次方）
+      # 限制关节角加速度的变化率，确保运动平滑
+      # 500.0是一个较大的值，允许较快的加速度变化（适合灵巧手的快速抓取）
       max_jerk: 500.0
+      
+      # 最大加速度（Maximum Acceleration）
+      # 单位：rad/s²（弧度每秒的平方）
+      # 限制关节角加速度的最大值，确保运动安全和平滑
+      # 15.0是一个适中的值，平衡了运动速度和稳定性
       max_acceleration: 15.0

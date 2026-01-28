@@ -1,0 +1,215 @@
+format: "xrdf"
+
+format_version: 1.0
+
+default_joint_positions: 
+  finger1_joint1: -0.0008
+  finger2_joint1: 0.0002
+  finger3_joint1: 0.0002
+  finger4_joint1: 0.0002
+  finger5_joint1: 0.0002
+  finger1_joint2: 0.0011
+  finger2_joint2: -1e-04
+  finger3_joint2: -0.0
+  finger4_joint2: 1e-04
+  finger5_joint2: 0.0002
+  finger1_joint3: -0.0005
+  finger2_joint3: 0.0002
+  finger3_joint3: 0.0002
+  finger4_joint3: 0.0002
+  finger5_joint3: 0.0002
+  finger1_joint4: -0.0004
+  finger2_joint4: 0.0002
+  finger3_joint4: 0.0002
+  finger4_joint4: 0.0002
+  finger5_joint4: 0.0002
+
+cspace: 
+  joint_names: []
+  acceleration_limits: []
+  jerk_limits: []
+
+collision: 
+  geometry: "auto_generated_collision_sphere_group"
+
+self_collision: 
+  geometry: "auto_generated_collision_sphere_group"
+  ignore: 
+    palm_link: 
+      - "finger1_link1"
+      - "finger2_link1"
+      - "finger3_link1"
+      - "finger4_link1"
+      - "finger5_link1"
+    finger1_link1: 
+      - "finger1_link2"
+    finger1_link2: 
+      - "finger1_link3"
+    finger1_link3: 
+      - "finger1_link4"
+    finger1_link4: 
+      - "finger1_tip_link"
+    finger2_link1: 
+      - "finger2_link2"
+    finger2_link2: 
+      - "finger2_link3"
+    finger2_link3: 
+      - "finger2_link4"
+    finger2_link4: 
+      - "finger2_tip_link"
+    finger3_link1: 
+      - "finger3_link2"
+    finger3_link2: 
+      - "finger3_link3"
+    finger3_link3: 
+      - "finger3_link4"
+    finger3_link4: 
+      - "finger3_tip_link"
+    finger4_link1: 
+      - "finger4_link2"
+    finger4_link2: 
+      - "finger4_link3"
+    finger4_link3: 
+      - "finger4_link4"
+    finger4_link4: 
+      - "finger4_tip_link"
+    finger5_link1: 
+      - "finger5_link2"
+    finger5_link2: 
+      - "finger5_link3"
+    finger5_link3: 
+      - "finger5_link4"
+    finger5_link4: 
+      - "finger5_tip_link"
+
+geometry: 
+  auto_generated_collision_sphere_group: 
+    spheres: 
+      palm_link: 
+        - center: [-0.001, -0.028, 0.059]
+          radius: 0.01032
+        - center: [-0.003, -0.016, 0.035]
+          radius: 0.01256
+        - center: [-0.001, -0.013, 0.007]
+          radius: 0.01276
+        - center: [-0.006, -0.005, 0.067]
+          radius: 0.01056
+        - center: [-0.002, 0.015, 0.01]
+          radius: 0.01244
+        - center: [-0.004, 0.016, 0.041]
+          radius: 0.01204
+        - center: [-0.005, 0.022, 0.071]
+          radius: 0.01064
+      finger1_link1: 
+        - center: [-0.004, -0.002, 0.009]
+          radius: 0.0088
+      finger1_link2: 
+        - center: [0.001, 0.0, 0.006]
+          radius: 0.00792
+        - center: [0.001, 0.0, 0.028]
+          radius: 0.00792
+      finger1_link3: 
+        - center: [-0.001, 0.0, 0.004]
+          radius: 0.00781
+        - center: [-0.001, 0.0, 0.024]
+          radius: 0.00781
+      finger1_link4: 
+        - center: [-0.001, 0.0, 0.0]
+          radius: 0.0077
+        - center: [-0.001, 0.0, 0.012]
+          radius: 0.0077
+      finger1_tip_link: 
+        - center: [0.0, 0.0, -0.003]
+          radius: 0.0066
+      finger2_link1: 
+        - center: [-0.004, 0.0, 0.001]
+          radius: 0.00726
+      finger2_link2: 
+        - center: [-0.006, 0.0, 0.004]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.022]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.04]
+          radius: 0.00781
+      finger2_link3: 
+        - center: [-0.001, 0.0, 0.006]
+          radius: 0.00781
+        - center: [-0.001, 0.0, 0.025]
+          radius: 0.00781
+      finger2_link4: 
+        - center: [-0.001, 0.0, 0.0]
+          radius: 0.0077
+        - center: [-0.001, 0.0, 0.007]
+          radius: 0.0077
+      finger2_tip_link: 
+        - center: [0.0, 0.0, -0.008]
+          radius: 0.0066
+      finger3_link1: 
+        - center: [-0.004, 0.0, 0.001]
+          radius: 0.00726
+      finger3_link2: 
+        - center: [-0.006, 0.0, 0.004]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.022]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.04]
+          radius: 0.00781
+      finger3_link3: 
+        - center: [-0.001, 0.0, 0.006]
+          radius: 0.00781
+        - center: [-0.001, 0.0, 0.025]
+          radius: 0.00781
+      finger3_link4: 
+        - center: [-0.001, 0.0, 0.0]
+          radius: 0.0077
+        - center: [-0.001, 0.0, 0.007]
+          radius: 0.0077
+      finger3_tip_link: 
+        - center: [0.0, 0.0, -0.007]
+          radius: 0.0066
+      finger4_link1: 
+        - center: [-0.004, 0.0, 0.001]
+          radius: 0.00726
+      finger4_link2: 
+        - center: [-0.006, 0.0, 0.004]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.022]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.04]
+          radius: 0.00781
+      finger4_link3: 
+        - center: [-0.001, 0.0, 0.006]
+          radius: 0.00781
+        - center: [-0.001, 0.0, 0.025]
+          radius: 0.00781
+      finger4_link4: 
+        - center: [-0.001, 0.0, 0.0]
+          radius: 0.0077
+        - center: [-0.001, 0.0, 0.007]
+          radius: 0.0077
+      finger4_tip_link: 
+        - center: [0.0, 0.0, -0.007]
+          radius: 0.0066
+      finger5_link1: 
+        - center: [-0.004, 0.0, 0.001]
+          radius: 0.00726
+      finger5_link2: 
+        - center: [-0.006, 0.0, 0.004]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.022]
+          radius: 0.00781
+        - center: [-0.006, 0.0, 0.04]
+          radius: 0.00781
+      finger5_link3: 
+        - center: [-0.001, 0.0, 0.006]
+          radius: 0.00781
+        - center: [-0.001, 0.0, 0.025]
+          radius: 0.00781
+      finger5_link4: 
+        - center: [-0.001, 0.0, 0.0]
+          radius: 0.0077
+        - center: [-0.001, 0.0, 0.007]
+          radius: 0.0077
+      finger5_tip_link: 
+        - center: [0.0, 0.0, -0.007]
+          radius: 0.0066
