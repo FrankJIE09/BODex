@@ -1,10 +1,10 @@
 world:
   type: scene_cfg
-#  template_path: object/DGN_2k/scene_cfg/**/floating/*.npy
+  template_path: object/DGN_2k/scene_cfg/**/floating/*.npy
 #  template_path: object/DGN_2k/scene_cfg/core_bottle_1a7ba1f4c892e2da30711cdbdbc73924/floating/scale006.npy
-  template_path: object/tmr_100w_01_c/floating/scale008.npy
-  start: 0
-  end: 100
+#  template_path: object/tmr_100w_01_c/floating/scale008.npy
+  start: 1
+  end: 2
 
 # 机器人配置文件
 robot_file: "right_wujihand_sim.yml"
@@ -63,7 +63,7 @@ grasp_cfg:
     gamma: 180
   ge_param:
     type: 'qp'
-    miu_coef: [0.1, 0]
+    miu_coef: [1, 0]
     solver_type: 'batch_reluqp'
     k_lower: 0.2
     pressure_constraints:   # [contact_id_list, lower]

@@ -212,8 +212,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-k",
         "--skip",
-        action="store_false",
-        help="如果为True，跳过已存在的文件（默认: True）。使用此参数会禁用跳过功能",
+        action="store_true",
+        default=False,
+        help="若指定则跳过已存在的 *_grasp.npy 文件；默认不跳过，会覆盖或新建",
     )
 
     # 设置日志级别为警告

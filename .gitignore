@@ -201,6 +201,8 @@ nvidia_curobo*/
 *.code-workspace
 *.usda
 *.pdf
+# LaTeX 源文件
+*.tex
 #*.png
 *.usd
 *.SLDPRT

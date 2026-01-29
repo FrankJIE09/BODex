@@ -1,0 +1,102 @@
+<mujoco model="right_shadow_hand">
+  <compiler angle="radian"/>
+
+  <worldbody>
+    <body name="rh_wrist" pos="0.01 0 0.21301" quat="0.707107 0 0 0.707107">
+      <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+      <joint name="rh_WRJ2" pos="0 0 0" axis="0 1 0" range="-0.523599 0.174533" actuatorfrcrange="-100 100"/>
+      <body name="rh_palm" pos="0 0 0.034">
+        <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+        <joint name="rh_WRJ1" pos="0 0 0" axis="1 0 0" range="-0.698132 0.488692" actuatorfrcrange="-100 100"/>
+        <body name="rh_ffknuckle" pos="0.033 0 0.095">
+          <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+          <joint name="rh_FFJ4" pos="0 0 0" axis="0 -1 0" range="-0.349066 0.349066" actuatorfrcrange="-100 100"/>
+          <body name="rh_ffproximal">
+            <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+            <joint name="rh_FFJ3" pos="0 0 0" axis="1 0 0" range="-0.261799 1.5708" actuatorfrcrange="-100 100"/>
+            <body name="rh_ffmiddle" pos="0 0 0.045">
+              <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+              <joint name="rh_FFJ2" pos="0 0 0" axis="1 0 0" range="0 1.5708" actuatorfrcrange="-100 100"/>
+              <body name="rh_ffdistal" pos="0 0 0.025">
+                <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+                <joint name="rh_FFJ1" pos="0 0 0" axis="1 0 0" range="0 1.5708" actuatorfrcrange="-100 100"/>
+              </body>
+            </body>
+          </body>
+        </body>
+        <body name="rh_mfknuckle" pos="0.011 0 0.099">
+          <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+          <joint name="rh_MFJ4" pos="0 0 0" axis="0 -1 0" range="-0.349066 0.349066" actuatorfrcrange="-100 100"/>
+          <body name="rh_mfproximal">
+            <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+            <joint name="rh_MFJ3" pos="0 0 0" axis="1 0 0" range="-0.261799 1.5708" actuatorfrcrange="-100 100"/>
+            <body name="rh_mfmiddle" pos="0 0 0.045">
+              <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+              <joint name="rh_MFJ2" pos="0 0 0" axis="1 0 0" range="0 1.5708" actuatorfrcrange="-100 100"/>
+              <body name="rh_mfdistal" pos="0 0 0.025">
+                <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+                <joint name="rh_MFJ1" pos="0 0 0" axis="1 0 0" range="0 1.5708" actuatorfrcrange="-100 100"/>
+              </body>
+            </body>
+          </body>
+        </body>
+        <body name="rh_rfknuckle" pos="-0.011 0 0.095">
+          <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+          <joint name="rh_RFJ4" pos="0 0 0" axis="0 1 0" range="-0.349066 0.349066" actuatorfrcrange="-100 100"/>
+          <body name="rh_rfproximal">
+            <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+            <joint name="rh_RFJ3" pos="0 0 0" axis="1 0 0" range="-0.261799 1.5708" actuatorfrcrange="-100 100"/>
+            <body name="rh_rfmiddle" pos="0 0 0.045">
+              <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+              <joint name="rh_RFJ2" pos="0 0 0" axis="1 0 0" range="0 1.5708" actuatorfrcrange="-100 100"/>
+              <body name="rh_rfdistal" pos="0 0 0.025">
+                <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+                <joint name="rh_RFJ1" pos="0 0 0" axis="1 0 0" range="0 1.5708" actuatorfrcrange="-100 100"/>
+              </body>
+            </body>
+          </body>
+        </body>
+        <body name="rh_lfmetacarpal" pos="-0.033 0 0.02071" quat="0.953717 0 0.300706 0">
+          <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+          <joint name="rh_LFJ5" pos="0 0 0" axis="0 0 1" range="0 0.785398" actuatorfrcrange="-100 100"/>
+          <body name="rh_lfknuckle" pos="-0.0377356 0 0.053892" quat="0.953717 0 -0.300706 0">
+            <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+            <joint name="rh_LFJ4" pos="0 0 0" axis="0 1 0" range="-0.349066 0.349066" actuatorfrcrange="-100 100"/>
+            <body name="rh_lfproximal">
+              <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+              <joint name="rh_LFJ3" pos="0 0 0" axis="1 0 0" range="-0.261799 1.5708" actuatorfrcrange="-100 100"/>
+              <body name="rh_lfmiddle" pos="0 0 0.045">
+                <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+                <joint name="rh_LFJ2" pos="0 0 0" axis="1 0 0" range="0 1.5708" actuatorfrcrange="-100 100"/>
+                <body name="rh_lfdistal" pos="0 0 0.025">
+                  <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+                  <joint name="rh_LFJ1" pos="0 0 0" axis="1 0 0" range="0 1.5708" actuatorfrcrange="-100 100"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+        <body name="rh_thbase" pos="0.034 -0.00858 0.029" quat="0.92388 0 0.382683 0">
+          <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+          <joint name="rh_THJ5" pos="0 0 0" axis="0 0 -1" range="-1.0472 1.0472" actuatorfrcrange="-100 100"/>
+          <body name="rh_thproximal">
+            <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+            <joint name="rh_THJ4" pos="0 0 0" axis="1 0 0" range="0 1.22173" actuatorfrcrange="-100 100"/>
+            <body name="rh_thhub" pos="0 0 0.038">
+              <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+              <joint name="rh_THJ3" pos="0 0 0" axis="1 0 0" range="-0.20944 0.20944" actuatorfrcrange="-100 100"/>
+              <body name="rh_thmiddle">
+                <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+                <joint name="rh_THJ2" pos="0 0 0" axis="0 -1 0" range="-0.698132 0.698132" actuatorfrcrange="-100 100"/>
+                <body name="rh_thdistal" pos="0 0 0.032" quat="0.707107 0 0 -0.707107">
+                  <inertial pos="0 0 0" mass="0.05" diaginertia="0.0001 0.0001 0.0001"/>
+                  <joint name="rh_THJ1" pos="0 0 0" axis="1 0 0" range="-0.261799 1.5708" actuatorfrcrange="-100 100"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
