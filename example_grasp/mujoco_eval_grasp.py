@@ -1,9 +1,9 @@
 # MuJoCo 抓取评估：读入 *_grasp.npy，回放 robot_pose 轨迹并判定抓取成功（抬升+稳定）。
 # 速度控制参数：大幅减慢手部趋近目标的速度
-VEL_GAIN = 1
+VEL_GAIN = 10
 MAX_VEL_LIN = 1000
 MAX_VEL_ANG = 1000
-SECONDS_PER_WAYPOINT = 1.0
+SECONDS_PER_WAYPOINT = .1
 
 import os
 import sys
@@ -15,6 +15,7 @@ if _src_dir not in sys.path:
 
 import glob
 import argparse
+import re
 import tempfile
 import time
 import xml.etree.ElementTree as ET
@@ -65,6 +66,10 @@ def run_mujoco_viewer(
     world_cfg: Any = None,
     robot_urdf_path: str = "",
     friction: float = 1.0,
+    object_deformable: Optional[bool] = None,
+    save_xml_path: Optional[str] = None,
+    solref: Optional[Tuple[float, float]] = None,
+    solimp: Optional[Tuple[float, float, float, float, float]] = None,
 ) -> bool:
     """启动 MuJoCo 画面并回放轨迹。"""
     import mujoco
@@ -84,16 +89,21 @@ def run_mujoco_viewer(
             npy_path=npy_path or "",
             scene_path=scene_path,
             friction=friction,
+            object_deformable=object_deformable,
+            save_xml_path=save_xml_path,
+            solref=solref,
+            solimp=solimp,
         )
         if scene is not None:
             model, data = scene
         else:
-            xml_fallback = _world_cfg_to_mjcf(
+            xml_fallback =             _world_cfg_to_mjcf(
                 world_cfg,
                 include_hand_placeholder=False,
                 npy_path=npy_path or "",
                 scene_path=scene_path,
                 friction=friction,
+                object_deformable=object_deformable,
             )
             model = mujoco.MjModel.from_xml_string(xml_fallback)
             data = mujoco.MjData(model)
@@ -222,8 +232,11 @@ def _world_cfg_to_mjcf(
     npy_path: str = "",
     scene_path: Any = None,
     friction: float = 1.0,
+    object_deformable: Optional[bool] = None,
 ) -> str:
-    """从 world_cfg 生成 MJCF（桌面+物体+可选手占位/hand_origin）。"""
+    """从 world_cfg 生成 MJCF（桌面+物体+可选手占位/hand_origin）。
+    object_deformable: 若指定则覆盖 world_cfg 中 mesh 的 deformable；否则用 mesh 配置。
+    """
     def _project_root() -> str:
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -317,11 +330,28 @@ def _world_cfg_to_mjcf(
     obj_scale = f"{s[0]} {s[1]} {s[2]}"
     mesh_name = os.path.splitext(os.path.basename(obj_mesh_file))[0]
     mesh_path_abs = os.path.abspath(obj_mesh_file).replace("\\", "/")
-    # 被抓物体碰撞属性：与手/桌面碰撞，3D 摩擦锥，较软接触避免穿透
-    obj_body_content = f"""      <freejoint name="object_joint"/>
-      <geom name="obj" type="mesh" mesh="{mesh_name}" rgba="0.2 0.6 0.9 1" mass="0.3" friction="{friction} 0.005 0.0001" condim="3" contype="1" conaffinity="1" solref="0.01 0.95" solimp="0.9 0.95 0.001 0.5 2"/>"""
-    mesh_asset = f'    <mesh name="{mesh_name}" file="{mesh_path_abs}" scale="{obj_scale}"/>'
-    
+    deformable = bool(object_deformable if object_deformable is not None else m.get("deformable", False))
+    young = float(m.get("young", 3e4))
+    poisson = float(m.get("poisson", 0.2))
+    flex_damping = float(m.get("damping", 0.5))
+    # flexcomp 类型：mesh=2D 三角面，gmsh=3D 四面体等（.msh 或 mesh.flex_type 指定）
+    flex_type = m.get("flex_type", "").strip().lower() or ("gmsh" if (obj_mesh_file or "").lower().endswith(".msh") else "mesh")
+
+    if deformable:
+        # MuJoCo 3.0+ flexcomp：type=mesh 为 2D 可变形面，type=gmsh 为 3D 体网格（.msh）
+        # 接触略软、弹性带阻尼，减少“爆开”与振荡
+        obj_body_content = f"""      <flexcomp name="obj_flex" type="{flex_type}" file="{mesh_path_abs}" scale="{obj_scale}" mass="0.3" rgba="0.2 0.6 0.9 1" radius="0.002">
+        <contact condim="3" friction="{friction} 0.005 0.0001" solref="0.02 0.95" solimp="0.9 0.95 0.001 0.5 2" selfcollide="none"/>
+        <edge damping="1"/>
+        <elasticity young="{young}" poisson="{poisson}" damping="{flex_damping}"/>
+      </flexcomp>"""
+        mesh_asset = ""
+    else:
+        # 刚体：freejoint + mesh geom
+        obj_body_content = f"""      <freejoint name="object_joint"/>
+      <geom name="obj" type="mesh" mesh="{mesh_name}" rgba="0.2 0.6 0.9 1" mass="0.3" friction="1 0.005 0.0001" condim="3" contype="1" conaffinity="1" solref="1 0.95" solimp="0.0 0 0.1 0.5 2"/>"""
+        mesh_asset = f'    <mesh name="{mesh_name}" file="{mesh_path_abs}" scale="{obj_scale}"/>'
+
     hand_block = ""
     if include_hand_placeholder:
         hand_block = """
@@ -340,7 +370,7 @@ def _world_cfg_to_mjcf(
     return f"""<mujoco model="grasp_eval">
   <option timestep="0.0005" gravity="0 0 0" cone="elliptic" impratio="10"/>
   <default>
-    <geom solimp="0.9 0.95 0.001 0.5 2" solref="0.05 1"/>
+    <geom solimp="0.009 0.0095 1 0.5 2" solref="0.05 1"/>
   </default>
   <asset>
 {mesh_asset}
@@ -364,11 +394,18 @@ def build_mujoco_scene_for_grasp(
     npy_path: str = "",
     scene_path: Any = None,
     friction: float = 1.0,
+    object_deformable: Optional[bool] = None,
+    save_xml_path: Optional[str] = None,
+    solref: Optional[Tuple[float, float]] = None,
+    solimp: Optional[Tuple[float, float, float, float, float]] = None,
 ) -> Optional[Tuple[Any, Any]]:
     """从 world_cfg 建 MuJoCo 场景；有 robot_urdf_path 则 attach 灵巧手。"""
     import mujoco
     if not (robot_urdf_path and os.path.isfile(robot_urdf_path)):
-        xml = _world_cfg_to_mjcf(world_cfg, npy_path=npy_path, scene_path=scene_path, friction=friction)
+        xml = _world_cfg_to_mjcf(
+            world_cfg, npy_path=npy_path, scene_path=scene_path, friction=friction,
+            object_deformable=object_deformable,
+        )
         model = mujoco.MjModel.from_xml_string(xml)
         data = mujoco.MjData(model)
         return (model, data)
@@ -403,6 +440,7 @@ def build_mujoco_scene_for_grasp(
         npy_path=npy_path,
         scene_path=scene_path,
         friction=friction,
+        object_deformable=object_deformable,
     )
     scene_spec = mujoco.MjSpec.from_string(scene_xml)
     hand_origin_body = scene_spec.body("hand_origin")
@@ -459,6 +497,11 @@ def build_mujoco_scene_for_grasp(
     mjcf_dir = os.path.dirname(mjcf_path) if mjcf_path else pkg_root
     hand_mjcf_path = tempfile.mktemp(suffix=".xml", prefix="hand_mjcf_", dir=mjcf_dir)
     mujoco.mj_saveLastXML(hand_mjcf_path, hand_model)
+    # 为手部 MJCF 中所有 geom 注入 friction，使保存的合并 XML 中手部也有摩擦属性
+    with open(hand_mjcf_path, "r", encoding="utf-8") as f:
+        hand_xml_content = f.read()
+    with open(hand_mjcf_path, "w", encoding="utf-8") as f:
+        f.write(_inject_geom_friction_in_mjcf(hand_xml_content, friction))
     original_cwd = os.getcwd()
     os.chdir(mjcf_dir)
     hand_spec = mujoco.MjSpec.from_file(os.path.basename(hand_mjcf_path))
@@ -466,23 +509,90 @@ def build_mujoco_scene_for_grasp(
     model = scene_spec.compile()
     os.chdir(original_cwd)
     data = mujoco.MjData(model)
-    # 统一摩擦：灵巧手所有 geom 使用与桌面/物体相同的摩擦系数（与 config 中 miu_coef 一致）
-    _apply_unified_friction(model, friction)
+    # 统一摩擦与接触：灵巧手所有 geom 使用与场景一致的 friction、solref、solimp
+    _apply_unified_friction(model, friction, solref=solref, solimp=solimp)
+    if save_xml_path:
+        mujoco.mj_saveLastXML(save_xml_path, model)
+        # mj_saveLastXML 不会把 model.geom_friction/solref/solimp 写回 XML，故后处理：给所有 <geom> 注入
+        with open(save_xml_path, "r", encoding="utf-8") as f:
+            saved_content = f.read()
+        with open(save_xml_path, "w", encoding="utf-8") as f:
+            f.write(_inject_geom_contact_in_mjcf(
+                saved_content, friction,
+                solref=solref or DEFAULT_SOLREF,
+                solimp=solimp or DEFAULT_SOLIMP,
+            ))
+        print(f"[INFO] 已保存合并后的场景 MJCF（含 friction/solref/solimp）: {save_xml_path}")
     for p in (patched_urdf_path, hand_mjcf_path):
         if p and os.path.isfile(p):
             os.remove(p)
     return (model, data)
 
 
-def _apply_unified_friction(model: Any, friction: float) -> None:
-    """将灵巧手（名称含 hand_）的 geom 摩擦设为与场景统一的 friction。"""
+def _inject_geom_friction_in_mjcf(content: str, friction: float) -> str:
+    """在 MJCF 字符串中为没有 friction 的 <geom> 注入 friction 属性，便于保存的 XML 中可见。"""
+    return _inject_geom_contact_in_mjcf(content, friction, solref=None, solimp=None)
+
+
+def _inject_geom_contact_in_mjcf(
+    content: str,
+    friction: float,
+    solref: Optional[Tuple[float, float]] = None,
+    solimp: Optional[Tuple[float, float, float, float, float]] = None,
+) -> str:
+    """在 MJCF 中为 <geom> 注入 friction（及可选的 solref、solimp），便于保存的 XML 中可见。"""
+    friction_attr = f' friction="{friction} 0.005 0.0001"'
+    solref_attr = f' solref="{solref[0]} {solref[1]}"' if solref is not None else ""
+    solimp_attr = f' solimp="{solimp[0]} {solimp[1]} {solimp[2]} {solimp[3]} {solimp[4]}"' if solimp is not None else ""
+
+    def repl(m: re.Match) -> str:
+        tag = m.group(0)
+        add: List[str] = []
+        if "friction=" not in tag:
+            add.append(friction_attr)
+        if solref_attr and "solref=" not in tag:
+            add.append(solref_attr)
+        if solimp_attr and "solimp=" not in tag:
+            add.append(solimp_attr)
+        if not add:
+            return tag
+        extra = "".join(add)
+        if tag.rstrip().endswith("/>"):
+            return tag.replace("/>", extra + "/>")
+        return tag.replace(">", extra + ">")
+
+    return re.sub(r"<geom[^>]*>", repl, content)
+
+
+# 灵巧手接触默认：与可变形体 contact 一致，便于抓取稳定
+DEFAULT_SOLREF = (0.02, 0.95)
+DEFAULT_SOLIMP = (0.9, 0.95, 0.001, 0.5, 2.0)
+
+
+def _apply_unified_friction(
+    model: Any,
+    friction: float,
+    solref: Optional[Tuple[float, float]] = None,
+    solimp: Optional[Tuple[float, float, float, float, float]] = None,
+) -> None:
+    """将灵巧手（geom 所属 body 名称含 hand_）的 geom 摩擦与接触 solref/solimp 设为与场景统一。"""
     import mujoco
+    solref = solref or DEFAULT_SOLREF
+    solimp = solimp or DEFAULT_SOLIMP
     for i in range(model.ngeom):
-        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, i) or ""
-        if name.startswith("hand_"):
+        body_id = model.geom_bodyid[i]
+        body_name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, body_id) or ""
+        if body_name.startswith("hand_"):
             model.geom_friction[i, 0] = friction
             model.geom_friction[i, 1] = 0.005
             model.geom_friction[i, 2] = 0.0001
+            model.geom_solref[i, 0] = solref[0]
+            model.geom_solref[i, 1] = solref[1]
+            model.geom_solimp[i, 0] = solimp[0]
+            model.geom_solimp[i, 1] = solimp[1]
+            model.geom_solimp[i, 2] = solimp[2]
+            model.geom_solimp[i, 3] = solimp[3]
+            model.geom_solimp[i, 4] = solimp[4]
 
 
 def _build_joint_qpos_map(
@@ -607,6 +717,10 @@ def run_mujoco_sim_stub(
     robot_urdf_path: str = "",
     scene_path: Any = None,
     friction: float = 1.0,
+    object_deformable: Optional[bool] = None,
+    save_xml_path: Optional[str] = None,
+    solref: Optional[Tuple[float, float]] = None,
+    solimp: Optional[Tuple[float, float, float, float, float]] = None,
 ) -> None:
     """建场景并回放轨迹。"""
     scene = build_mujoco_scene_for_grasp(
@@ -616,6 +730,10 @@ def run_mujoco_sim_stub(
         npy_path=npy_path,
         scene_path=scene_path,
         friction=friction,
+        object_deformable=object_deformable,
+        save_xml_path=save_xml_path,
+        solref=solref,
+        solimp=solimp,
     )
     if scene is None:
         return
@@ -631,9 +749,13 @@ def evaluate_grasps_for_file(
     max_grasps: int = -1,
     grasp_index: int = 0,
     show_viewer: bool = False,
-    viewer_timeout_s: float = 30.0,
+    viewer_timeout_s: float = 300.0,
     robot_urdf_path: str = "",
     friction: float = 1.0,
+    object_deformable: Optional[bool] = None,
+    save_xml_path: Optional[str] = None,
+    solref: Optional[Tuple[float, float]] = None,
+    solimp: Optional[Tuple[float, float, float, float, float]] = None,
 ) -> int:
     """对单个 npy 回放；支持 (1,20,3,27) 时只取 robot_pose[0, grasp_index] 即 (3,27)。"""
     data: Dict[str, Any] = np.load(npy_path, allow_pickle=True).item()
@@ -665,12 +787,20 @@ def evaluate_grasps_for_file(
                 world_cfg=world_cfg,
                 robot_urdf_path=robot_urdf_path,
                 friction=friction,
+                object_deformable=object_deformable,
+                save_xml_path=save_xml_path,
+                solref=solref,
+                solimp=solimp,
             )
         run_mujoco_sim_stub(
             world_cfg, joint_names, traj, g, npy_path,
             robot_urdf_path=robot_urdf_path,
             scene_path=scene_path,
             friction=friction,
+            object_deformable=object_deformable,
+            save_xml_path=save_xml_path,
+            solref=solref,
+            solimp=solimp,
         )
         return 1
 
@@ -695,12 +825,20 @@ def evaluate_grasps_for_file(
                 world_cfg=world_cfg,
                 robot_urdf_path=robot_urdf_path,
                 friction=friction,
+                object_deformable=object_deformable,
+                save_xml_path=save_xml_path,
+                solref=solref,
+                solimp=solimp,
             )
         run_mujoco_sim_stub(
             world_cfg, joint_names, traj, g, npy_path,
             robot_urdf_path=robot_urdf_path,
             scene_path=scene_path,
             friction=friction,
+            object_deformable=object_deformable,
+            save_xml_path=save_xml_path,
+            solref=solref,
+            solimp=solimp,
         )
 
     return num_grasps
@@ -715,6 +853,10 @@ def main():
     parser.add_argument("--view", action="store_true", default=True, help="第一个抓取开 MuJoCo 窗口")
     parser.add_argument("--no-view", action="store_false", dest="view", help="不开窗口")
     parser.add_argument("--timeout", type=float, default=30.0, help="窗口最长秒数")
+    parser.add_argument("--deformable", action="store_true", help="被抓物体用 MuJoCo 3.0+ flexcomp 可变形建模（2D 表面）")
+    parser.add_argument("--save-xml", type=str, default=None, metavar="PATH", help="将合并后的场景 MJCF（手+物体+桌面）保存到该路径，便于查看最终 XML")
+    parser.add_argument("--solref", type=str, default=None, metavar="TIMEconst DAMPratio", help="灵巧手接触 solref，如 '0.02 0.95'")
+    parser.add_argument("--solimp", type=str, default=None, metavar="D0 DWIDTH WIDTH MID POWER", help="灵巧手接触 solimp，如 '0.9 0.95 0.001 0.5 2'")
 
     args = parser.parse_args()
 
@@ -732,6 +874,17 @@ def main():
         if isinstance(miu_coef, list) and len(miu_coef) > 0:
             friction = float(miu_coef[0])
     print(f"[INFO] 设置摩擦系数: {friction}")
+
+    solref: Optional[Tuple[float, float]] = None
+    solimp: Optional[Tuple[float, float, float, float, float]] = None
+    if args.solref:
+        parts = args.solref.split()
+        if len(parts) >= 2:
+            solref = (float(parts[0]), float(parts[1]))
+    if args.solimp:
+        parts = args.solimp.split()
+        if len(parts) >= 5:
+            solimp = (float(parts[0]), float(parts[1]), float(parts[2]), float(parts[3]), float(parts[4]))
 
     npy_files = find_grasp_npy_files(args.manip_cfg_file, args.path)
     if not npy_files:
@@ -754,6 +907,10 @@ def main():
                 viewer_timeout_s=args.timeout,
                 robot_urdf_path=robot_urdf_path,
                 friction=friction,
+                object_deformable=True if args.deformable else None,
+                save_xml_path=args.save_xml,
+                solref=solref,
+                solimp=solimp,
             )
             total_grasps += n_g
             if args.view and n_g > 0:

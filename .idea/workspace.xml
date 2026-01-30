@@ -5,69 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="605e8ca7-a9eb-4f63-910c-514bb75e9658" name="更改" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/webResources.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example_grasp/print_grasp_npy.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger1_link1.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger1_link2.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger1_link3.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger1_link4.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger1_tip_link.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger2_link1.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger2_link2.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger2_link3.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger2_link4.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger2_tip_link.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger3_link1.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger3_link2.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger3_link3.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger3_link4.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger3_tip_link.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger4_link1.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger4_link2.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger4_link3.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger4_link4.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger4_tip_link.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger5_link1.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger5_link2.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger5_link3.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger5_link4.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/finger5_tip_link.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/left.urdf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/left.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/left/palm_link.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger1_link1.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger1_link2.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger1_link3.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger1_link4.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger1_tip_link.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger2_link1.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger2_link2.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger2_link3.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger2_link4.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger2_tip_link.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger3_link1.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger3_link2.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger3_link3.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger3_link4.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger3_tip_link.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger4_link1.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger4_link2.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger4_link3.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger4_link4.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger4_tip_link.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger5_link1.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger5_link2.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger5_link3.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger5_link4.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/finger5_tip_link.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/palm_link.STL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/right.urdf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/right.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example_grasp/plan_batch_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/example_grasp/plan_batch_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/curobo/content/configs/manip/sim_wujihand/fc.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/curobo/content/configs/manip/sim_wujihand/fc.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example_grasp/MUJOCO_SCENE_TABLE.md" beforeDir="false" afterPath="$PROJECT_DIR$/example_grasp/MUJOCO_SCENE_TABLE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py" beforeDir="false" afterPath="$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/hand_mjcf_vlyy97wt.xml" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -96,8 +37,9 @@
     "Python.grasp_solver.executor": "Run",
     "Python.load_all_robots.executor": "Run",
     "Python.mujoco_eval_grasp copy.executor": "Run",
-    "Python.mujoco_eval_grasp.executor": "Run",
+    "Python.mujoco_eval_grasp.executor": "Debug",
     "Python.mujoco_eval_grasp_.executor": "Run",
+    "Python.mujoco_eval_grasp_copy.executor": "Run",
     "Python.plan_batch_env.executor": "Run",
     "Python.print_grasp_npy.executor": "Debug",
     "Python.visualize_npy.executor": "Run",
@@ -128,28 +70,6 @@
     </key>
   </component>
   <component name="RunManager" selected="Python.mujoco_eval_grasp">
-    <configuration name="collision_checker" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="BODex" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/examples/isaac_sim" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/examples/isaac_sim/collision_checker.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="create_scene_cfg" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="BODex" />
       <option name="ENV_FILES" value="" />
@@ -231,7 +151,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py" />
-      <option name="PARAMETERS" value="-c sim_wujihand/fc.yml -p ../../test --grasp_index 9" />
+      <option name="PARAMETERS" value="-c sim_wujihand/fc.yml -p ../../test --grasp_index 5 --save-xml grasp_scene.xml --solref &quot;0.03 0.95&quot; --solimp &quot;0.05 0.05 0.001 0.5 2&quot;" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -254,6 +174,28 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/example_grasp/mujoco_eval_grasp_.py" />
       <option name="PARAMETERS" value="-c sim_wujihand/fc.yml -p ../../test" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="mujoco_eval_grasp_copy" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="BODex" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/example_grasp" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/example_grasp/mujoco_eval_grasp_copy.py" />
+      <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -337,19 +279,19 @@
       <item itemvalue="Python.mujoco_eval_grasp" />
       <item itemvalue="Python.create_scene_cfg" />
       <item itemvalue="Python.load_all_robots" />
+      <item itemvalue="Python.mujoco_eval_grasp_copy" />
       <item itemvalue="Python.mujoco_eval_grasp_" />
       <item itemvalue="Python.print_grasp_npy" />
       <item itemvalue="Python.visualize_npy" />
-      <item itemvalue="Python.collision_checker" />
       <item itemvalue="Python.plan_batch_env" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.mujoco_eval_grasp_copy" />
         <item itemvalue="Python.mujoco_eval_grasp_" />
         <item itemvalue="Python.print_grasp_npy" />
         <item itemvalue="Python.plan_batch_env" />
         <item itemvalue="Python.visualize_npy" />
-        <item itemvalue="Python.collision_checker" />
       </list>
     </recent_temporary>
   </component>
@@ -395,28 +337,23 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py</url>
-          <line>112</line>
-          <option name="timeStamp" value="25" />
+          <line>528</line>
+          <option name="timeStamp" value="33" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py</url>
-          <line>119</line>
-          <option name="timeStamp" value="26" />
+          <line>352</line>
+          <option name="timeStamp" value="34" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py</url>
-          <line>116</line>
-          <option name="timeStamp" value="28" />
+          <line>583</line>
+          <option name="timeStamp" value="35" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py</url>
-          <line>322</line>
-          <option name="timeStamp" value="29" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py</url>
-          <line>339</line>
-          <option name="timeStamp" value="30" />
+          <line>497</line>
+          <option name="timeStamp" value="36" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
