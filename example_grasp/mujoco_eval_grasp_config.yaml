@@ -1,0 +1,89 @@
+# MuJoCo 抓取评估配置
+# 与 mujoco_eval_grasp.py 配合使用；所有配置来自本文件（不再支持命令行 parser）
+
+# ---------- 必须项 ----------
+# 摩擦与接触
+friction: 1.0                    # 切向摩擦系数 μ1；若 use_friction_from_manip 为 true 则优先从 manip_cfg.grasp_cfg.ge_param.miu_coef[0] 读
+use_friction_from_manip: false     # true：优先用 manip 配置的 miu_coef[0]；false：只用本文件 friction
+condim: 4                         # 接触维度，3=法向+2切向，6=3平移+3旋转（含扭转/滚动）
+solref: [0.01, 1]              # 接触参考加速度 [timeconst, dampratio]
+solimp: [0.1, 0.1, 0.01, 0.5, 2.0]  # 接触阻抗 [d0, dwidth, width, midpoint, power]
+
+# 仿真步长
+timestep: 0.0005                  # MuJoCo 仿真步长 (s)
+
+# 回放步数
+waypoint_duration_steps: 500    # 每个路点持续步数（run_one_grasp_replay）
+hold_steps: 500                   # 抓稳后保持步数（run_one_grasp_replay）
+seconds_per_waypoint: 0.1        # 用于 load_grasp_scene_and_show 的每路点时间 (s)
+
+# 速度控制（趋近路点）
+vel_gain: 10          # 速度增益系数（越大速度越快）
+max_vel_lin: 10    # 最大线速度（用于 base 的平移，当前代码未使用）
+max_vel_ang: 10    # 最大角速度（用于手指关节的旋转速度限制）
+
+# 物体是否可变形（覆盖 world_cfg 中 mesh.deformable）
+object_deformable: false           # true/false/null，null 表示用 world_cfg
+
+# 评估/回放
+max_grasps: 1                     # 每文件最多回放条数，<=0 全部
+grasp_index: 0                    # 多抓取时选用第几条（如 0～19）
+show_viewer: true                 # 是否开 MuJoCo 窗口
+viewer_timeout_s: 300.0            # 窗口最长显示秒数（main）；evaluate_grasps_for_file 内为 300.0 可单独加项
+
+# Viewer 相机（自由相机：lookat + distance + azimuth + elevation，单位：米/弧度）
+camera:
+  lookat: [0.0, 0.0, 0.05]        # 相机看向的点 [x, y, z]
+  distance: 0.8                   # 相机到 lookat 的距离
+  azimuth: -90                    # 水平角（度），0=+X，90=+Y，-90=-Y
+  elevation: -20                  # 俯仰角（度），0=水平，负=从上往下看
+
+# ---------- 可选项 ----------
+# 摩擦第二、三分量（扭转、滚动）
+friction_torsional: 0.005
+friction_rolling: 0.0001
+
+# MuJoCo option（<option>）；gravity 可由本段或顶层 gravity 覆盖
+mujoco_option:
+  gravity: "0 0 0"                # "gx gy gz" 或 [gx, gy, gz]，如 "0 0 -9.81" 为重力向下
+  gravity_alt: "0 0 -9.81"        # 按键切换后的重力（如 "0 0 -9.81"）；不配置则无切换
+  gravity_toggle_key: "z"         # 按下此键在 gravity 与 gravity_alt 之间切换
+  cone: "elliptic"                # elliptic | pyramidal
+  impratio: 10
+
+# 默认 geom（<default><geom>）
+#default_geom:
+#  solimp: [0.5, 0.99,  0.0001, 0.5, 2]
+#  solref: [0.05, 1]
+
+# 灵巧手 geom 碰撞类型（覆盖 MJCF 中的 contype/conaffinity）
+hand:
+  contype: 1                       # 碰撞类型（位掩码）
+  conaffinity: 1                   # 与 conaffinity 含此位的 geom 碰撞；手=1 物体=2 则 1&2 可碰
+
+# 物体/可变形体（可覆盖 world_cfg 中 mesh 的对应项）
+object:
+  mass: 0.003                        # 刚体质量 (kg)
+  # 刚体 geom（被抓物体 mesh）接触与碰撞
+  friction: 1.0                    # 切向摩擦 μ1；与顶层 friction 独立
+  solref: [0.01, 1]              # 接触参考 [timeconst, dampratio]
+  solimp: [0.1, 0.1, 0.01, 0.5, 2.0]  # 接触阻抗 [d0, dwidth, width, midpoint, power]
+  contype: 1                       # 碰撞类型
+  conaffinity:  1                  # 与 conaffinity 2 的 geom 碰撞（手通常为 1）
+  young: 3.0e4                     # 杨氏模量（可变形体）
+  poisson: 0.2
+  flex_damping: 0.5
+  # flex 接触（可变形体 contact 子元素）
+  flex_contact_solref: [0.02, 0.95]
+  flex_contact_solimp: [0.9, 0.95, 0.001, 0.5, 2.0]
+
+# 路径（测试 Shadow 手：manip_cfg_file 用 sim_shadow/fc.yml，path 用 debug 或已有 graspdata 目录）
+#path: "debug"                      # 相对 get_output_path()：即 sim_shadow/fc/debug/graspdata
+#manip_cfg_file: "sim_shadow/fc.yml" # Shadow 手：right_shadow_hand_sim.yml
+#mjcf_path: "src/curobo/content/assets/robot/shadow_hand/mjcf/right/right.xml"  # 手部 MJCF 文件路径（绝对路径或相对项目根目录）
+#save_xml_path: null                # 合并场景 MJCF 保存路径，不保存则 null
+## 路径
+path: "../../test"                  # 实验目录或 *_grasp.npy 路径
+manip_cfg_file: "sim_wujihand/fc.yml"
+mjcf_path: "src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/right.xml"  # 注意：目录名是 wujihand-urdf
+save_xml_path: null

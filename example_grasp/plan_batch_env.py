@@ -324,24 +324,47 @@ if __name__ == "__main__":
             )
         else:
             # 普通模式：只保存最终结果
+            # 根据 save_id 参数选择要保存的抓取候选
+            if args.save_id is not None and len(args.save_id) > 0:
+                # 只保存指定的抓取候选
+                save_id_lst = args.save_id
+                # 确保索引在有效范围内
+                num_seeds = result.solution.shape[1]
+                save_id_lst = [idx for idx in save_id_lst if 0 <= idx < num_seeds]
+                if len(save_id_lst) == 0:
+                    # 如果没有有效的索引，默认保存第一个
+                    save_id_lst = [0]
+            else:
+                # 保存所有抓取候选
+                num_seeds = result.solution.shape[1]
+                save_id_lst = list(range(num_seeds))
+            
+            # 选择要保存的抓取候选
+            selected_solution = result.solution[:, save_id_lst, :, :]
+            selected_contact_point = result.contact_point[:, save_id_lst, :, :]
+            selected_contact_frame = result.contact_frame[:, save_id_lst, :, :]
+            selected_contact_force = result.contact_force[:, save_id_lst, :, :]
+            selected_grasp_error = result.grasp_error[:, save_id_lst, :]
+            selected_dist_error = result.dist_error[:, save_id_lst, :]
+            
             # 计算挤压姿态（squeeze pose）：手指进一步闭合
             squeeze_pose_qpos = torch.cat(
                 [
-                    result.solution[..., 1, :7],  # 保持根姿态不变
-                    result.solution[..., 1, 7:] * 2 - result.solution[..., 0, 7:],  # 手指进一步闭合
+                    selected_solution[..., 1, :7],  # 保持根姿态不变
+                    selected_solution[..., 1, 7:] * 2 - selected_solution[..., 0, 7:],  # 手指进一步闭合
                 ],
                 dim=-1,
             )
             # 拼接所有姿态：预抓取、抓取、挤压
             all_hand_pose_qpos = torch.cat(
-                [result.solution, squeeze_pose_qpos.unsqueeze(-2)], dim=-2
+                [selected_solution, squeeze_pose_qpos.unsqueeze(-2)], dim=-2
             )
             world_info_dict["robot_pose"] = all_hand_pose_qpos
-            world_info_dict["contact_point"] = result.contact_point  # 接触点位置
-            world_info_dict["contact_frame"] = result.contact_frame  # 接触坐标系
-            world_info_dict["contact_force"] = result.contact_force  # 接触力
-            world_info_dict["grasp_error"] = result.grasp_error  # 抓取误差
-            world_info_dict["dist_error"] = result.dist_error  # 距离误差
+            world_info_dict["contact_point"] = selected_contact_point  # 接触点位置
+            world_info_dict["contact_frame"] = selected_contact_frame  # 接触坐标系
+            world_info_dict["contact_force"] = selected_contact_force  # 接触力
+            world_info_dict["grasp_error"] = selected_grasp_error  # 抓取误差
+            world_info_dict["dist_error"] = selected_dist_error  # 距离误差
         
         # 记录单个对象的处理时间
         log_warn(f"Sinlge Time: {time.time()-sst}")

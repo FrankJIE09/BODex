@@ -5,10 +5,44 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="605e8ca7-a9eb-4f63-910c-514bb75e9658" name="更改" comment="">
+      <change afterPath="$PROJECT_DIR$/example_grasp/mujoco_eval_grasp_config.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/mjcf/right/LICENSE" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/mjcf/right/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/mjcf/right/assets/f_distal_pst.obj" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/mjcf/right/assets/f_knuckle.obj" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/mjcf/right/assets/f_middle.obj" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/mjcf/right/assets/f_proximal.obj" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/mjcf/right/assets/lf_metacarpal.obj" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/mjcf/right/assets/palm.obj" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/mjcf/right/assets/th_distal_pst.obj" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/mjcf/right/assets/th_middle.obj" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/mjcf/right/assets/th_proximal.obj" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/mjcf/right/right.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example_grasp/MUJOCO_SCENE_TABLE.md" beforeDir="false" afterPath="$PROJECT_DIR$/example_grasp/MUJOCO_SCENE_TABLE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CHANGELOG.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/DATASET_DOWNLOAD_STATUS.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ENV_SETUP_STATUS.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/GITHUB_ISSUE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/GIT_LFS_QUOTA_EXPLANATION.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/GIT_LFS_STATUS.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ISAAC_SIM_COLLISION_SPHERES_GUIDE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/LFS_FREE_ACCOUNT_QUOTA.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/LFS_QUOTA_UPDATE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RUNNING_GUIDE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SHADOW_HAND_STL_ISSUE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/VIEW_RESULTS_GUIDE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/WHOSE_PROBLEM.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example_grasp/MUJOCO_LOG.TXT" beforeDir="false" afterPath="$PROJECT_DIR$/example_grasp/MUJOCO_LOG.TXT" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example_grasp/grasp_scene.xml" beforeDir="false" afterPath="$PROJECT_DIR$/example_grasp/grasp_scene.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py" beforeDir="false" afterPath="$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/curobo/content/assets/robot/wujihand-urdf/mjcf/right/hand_mjcf_vlyy97wt.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example_grasp/plan_batch_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/example_grasp/plan_batch_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example_grasp/print_grasp_npy.py" beforeDir="false" afterPath="$PROJECT_DIR$/example_grasp/print_grasp_npy.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/hand_patched_6j5x2n7_.urdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/hand_patched_dcbit5ed.urdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/curobo/content/assets/robot/shadow_hand/hand_patched_x_eplk8a.urdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/curobo/content/configs/manip/sim_shadow/fc.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/curobo/content/configs/manip/sim_shadow/fc.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/curobo/content/configs/manip/sim_wujihand/fc.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/curobo/content/configs/manip/sim_wujihand/fc.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,7 +71,7 @@
     "Python.grasp_solver.executor": "Run",
     "Python.load_all_robots.executor": "Run",
     "Python.mujoco_eval_grasp copy.executor": "Run",
-    "Python.mujoco_eval_grasp.executor": "Debug",
+    "Python.mujoco_eval_grasp.executor": "Run",
     "Python.mujoco_eval_grasp_.executor": "Run",
     "Python.mujoco_eval_grasp_copy.executor": "Run",
     "Python.plan_batch_env.executor": "Run",
@@ -151,7 +185,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py" />
-      <option name="PARAMETERS" value="-c sim_wujihand/fc.yml -p ../../test --grasp_index 5 --save-xml grasp_scene.xml --solref &quot;0.03 0.95&quot; --solimp &quot;0.05 0.05 0.001 0.5 2&quot;" />
+      <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -287,8 +321,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.mujoco_eval_grasp_copy" />
         <item itemvalue="Python.mujoco_eval_grasp_" />
+        <item itemvalue="Python.mujoco_eval_grasp_copy" />
         <item itemvalue="Python.print_grasp_npy" />
         <item itemvalue="Python.plan_batch_env" />
         <item itemvalue="Python.visualize_npy" />
@@ -337,23 +371,13 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py</url>
-          <line>528</line>
-          <option name="timeStamp" value="33" />
+          <line>363</line>
+          <option name="timeStamp" value="38" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py</url>
-          <line>352</line>
-          <option name="timeStamp" value="34" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py</url>
-          <line>583</line>
-          <option name="timeStamp" value="35" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/example_grasp/mujoco_eval_grasp.py</url>
-          <line>497</line>
-          <option name="timeStamp" value="36" />
+          <line>1056</line>
+          <option name="timeStamp" value="40" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

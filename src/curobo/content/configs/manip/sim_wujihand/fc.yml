@@ -63,7 +63,7 @@ grasp_cfg:
     gamma: 180
   ge_param:
     type: 'qp'
-    miu_coef: [1, 0]
+    miu_coef: [0.6, 0.02]
     solver_type: 'batch_reluqp'
     k_lower: 0.2
     pressure_constraints:   # [contact_id_list, lower]

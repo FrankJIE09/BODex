@@ -5,10 +5,6 @@ MAX_VEL_LIN = 1000
 MAX_VEL_ANG = 1000
 SECONDS_PER_WAYPOINT = .1
 
-# 键盘控制灵巧手 base（世界系）：线速度(m/s)、角速度(rad/s)，按住键累加移动
-BASE_VEL_LIN = 0.05
-BASE_VEL_ANG = 0.08
-
 import os
 import sys
 
@@ -20,17 +16,11 @@ if _src_dir not in sys.path:
 import glob
 import re
 import tempfile
-import threading
 import time
 import xml.etree.ElementTree as ET
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-
-try:
-    from pynput import keyboard
-except ImportError:
-    keyboard = None  # type: ignore
 
 from curobo.util_file import (
     load_yaml,
@@ -48,7 +38,8 @@ def find_grasp_npy_files(manip_cfg_file: str, exp_path: str) -> List[str]:
     if not os.path.isabs(path) and (os.path.isfile(path) or os.path.isdir(path)):
         path = os.path.abspath(path)
     if os.path.isabs(path):
-        search_root = os.path.dirname(path) if os.path.isfile(path) else (path.rstrip(os.sep) if os.path.isdir(path) else os.path.dirname(path))
+        search_root = os.path.dirname(path) if os.path.isfile(path) else (
+            path.rstrip(os.sep) if os.path.isdir(path) else os.path.dirname(path))
         pattern_recursive = os.path.join(search_root, "**", "*_grasp.npy")
         pattern_same_dir = os.path.join(search_root, "*_grasp.npy")
         files = set(glob.glob(pattern_recursive, recursive=True)) | set(glob.glob(pattern_same_dir))
@@ -67,79 +58,28 @@ def find_grasp_npy_files(manip_cfg_file: str, exp_path: str) -> List[str]:
     return sorted(files)
 
 
-def _quat_mult_mj(q1: np.ndarray, q2: np.ndarray) -> np.ndarray:
-    """四元数乘法，MuJoCo 顺序 (w, x, y, z)。返回 q1 * q2。"""
-    w1, x1, y1, z1 = float(q1[0]), float(q1[1]), float(q1[2]), float(q1[3])
-    w2, x2, y2, z2 = float(q2[0]), float(q2[1]), float(q2[2]), float(q2[3])
-    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
-    x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
-    y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
-    z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
-    return np.array([w, x, y, z], dtype=np.float64)
-
-
-# 键盘调试：每 N 帧或按键变化时打印一次（0=关闭）
-BASE_KEYBOARD_DEBUG_INTERVAL = 0  # 约每 0.15s 打印一次（若 2000Hz timestep）
-
-
-def _apply_base_keyboard(
-    data: Any,
-    base_dof_start: int,
-    base_qpos_start: int,
-    keys_pressed: Set[str],
-    vel_lin: float,
-    vel_ang: float,
-    debug_frame: int = 0,
-) -> None:
-    """根据当前按键设置 base 的世界系线速度/角速度（qvel），由仿真逐步累加位移。
-    按键布局：qa=vx, ws=vy, ed=vz（平移）；rf=wx, tg=wy, yh=wz（旋转）。每对中后者为正。"""
-    # 线速度：世界系 vx, vy, vz。qa / ws / ed
-    vx = ((1.0 if "a" in keys_pressed else 0.0) - (1.0 if "q" in keys_pressed else 0.0)) * vel_lin
-    vy = ((1.0 if "w" in keys_pressed else 0.0) - (1.0 if "s" in keys_pressed else 0.0)) * vel_lin
-    vz = ((1.0 if "e" in keys_pressed else 0.0) - (1.0 if "d" in keys_pressed else 0.0)) * vel_lin
-    data.qvel[base_dof_start : base_dof_start + 3] = np.array([vx, vy, vz], dtype=np.float64)
-    # 角速度：世界系 wx, wy, wz。rf / tg / yh
-    wx = ((1.0 if "r" in keys_pressed else 0.0) - (1.0 if "f" in keys_pressed else 0.0)) * vel_ang
-    wy = ((1.0 if "t" in keys_pressed else 0.0) - (1.0 if "g" in keys_pressed else 0.0)) * vel_ang
-    wz = ((1.0 if "y" in keys_pressed else 0.0) - (1.0 if "h" in keys_pressed else 0.0)) * vel_ang
-    data.qvel[base_dof_start + 3 : base_dof_start + 6] = np.array([wx, wy, wz], dtype=np.float64)
-    if BASE_KEYBOARD_DEBUG_INTERVAL > 0 and (len(keys_pressed) > 0 or (debug_frame > 0 and debug_frame % BASE_KEYBOARD_DEBUG_INTERVAL == 0)):
-        pos = data.qpos[base_qpos_start : base_qpos_start + 3]
-        vel = data.qvel[base_dof_start : base_dof_start + 6]
-        print(f"[DEBUG base_kb] frame={debug_frame} keys={keys_pressed} pos={pos} vel_lin={vel[:3]} vel_ang={vel[3:]}")
-
-
 def run_mujoco_viewer(
-    npy_path: Optional[str] = None,
-    traj: Optional[np.ndarray] = None,
-    joint_names: Optional[List[str]] = None,
-    timeout_s: float = 30.0,
-    world_cfg: Any = None,
-    robot_mjcf_path: str = "",
-    friction: float = 1.0,
-    object_deformable: Optional[bool] = None,
-    save_xml_path: Optional[str] = None,
-    solref: Optional[Tuple[float, float]] = None,
-    solimp: Optional[Tuple[float, float, float, float, float]] = None,
-    condim: int = 6,
-    vel_gain: float = VEL_GAIN,
-    max_vel_lin: float = MAX_VEL_LIN,
-    max_vel_ang: float = MAX_VEL_ANG,
-    timestep: float = 0.0005,
-    camera_lookat: Optional[List[float]] = None,
-    camera_distance: Optional[float] = None,
-    camera_azimuth: Optional[float] = None,
-    camera_elevation: Optional[float] = None,
-    object_geom: Optional[Dict[str, Any]] = None,
-    hand_geom: Optional[Dict[str, Any]] = None,
-    gravity: str = "0 0 0",
-    gravity_alt: Optional[str] = None,
-    gravity_toggle_key: str = "z",
+        npy_path: Optional[str] = None,
+        traj: Optional[np.ndarray] = None,
+        joint_names: Optional[List[str]] = None,
+        timeout_s: float = 30.0,
+        world_cfg: Any = None,
+        robot_mjcf_path: str = "",
+        friction: float = 1.0,
+        object_deformable: Optional[bool] = None,
+        save_xml_path: Optional[str] = None,
+        solref: Optional[Tuple[float, float]] = None,
+        solimp: Optional[Tuple[float, float, float, float, float]] = None,
+        condim: int = 6,
+        vel_gain: float = VEL_GAIN,
+        max_vel_lin: float = MAX_VEL_LIN,
+        max_vel_ang: float = MAX_VEL_ANG,
+        timestep: float = 0.0005,
 ) -> bool:
     """启动 MuJoCo 画面并回放轨迹。"""
     import mujoco
     import mujoco.viewer
-    
+
     print(f"[DEBUG] run_mujoco_viewer: 使用 timestep={timestep} s")
 
     scene_path = None
@@ -162,9 +102,6 @@ def run_mujoco_viewer(
             solimp=solimp,
             condim=condim,
             timestep=timestep,
-            object_geom=object_geom,
-            hand_geom=hand_geom,
-            gravity=gravity,
         )
         if scene is not None:
             model, data = scene
@@ -179,8 +116,6 @@ def run_mujoco_viewer(
                 condim=condim,
                 hand_init_pose=None,
                 timestep=timestep,
-                object_geom=object_geom,
-                gravity=gravity,
             )
             model = mujoco.MjModel.from_xml_string(xml_fallback)
             data = mujoco.MjData(model)
@@ -194,7 +129,8 @@ def run_mujoco_viewer(
         # 打印手部初始位置（第一个路点的前7个值）
         hand_init_pos = traj[0, :7] if traj.shape[0] > 0 else None
         if hand_init_pos is not None:
-            print(f"[DEBUG] 手部初始位置: pos=({hand_init_pos[0]:.4f}, {hand_init_pos[1]:.4f}, {hand_init_pos[2]:.4f}), quat=({hand_init_pos[3]:.4f}, {hand_init_pos[4]:.4f}, {hand_init_pos[5]:.4f}, {hand_init_pos[6]:.4f})")
+            print(
+                f"[DEBUG] 手部初始位置: pos=({hand_init_pos[0]:.4f}, {hand_init_pos[1]:.4f}, {hand_init_pos[2]:.4f}), quat=({hand_init_pos[3]:.4f}, {hand_init_pos[4]:.4f}, {hand_init_pos[5]:.4f}, {hand_init_pos[6]:.4f})")
     mapping = _build_joint_qpos_map(model, joint_names or [], nq_traj) if nq_traj else []
     if not mapping and nq_traj >= 7:
         print("[DEBUG] 映射为空，尝试查找 hand_free 关节")
@@ -203,110 +139,26 @@ def run_mujoco_viewer(
             mapping = [(0, int(model.jnt_qposadr[jid]), 7, int(model.jnt_dofadr[jid]), 6)]
             print(f"[DEBUG] 找到 hand_free，添加 base 映射")
     print(f"[DEBUG] Viewer模式最终映射数量: {len(mapping)}")
-    # base 的 qpos/dof 起始下标（用于 pynput 键盘 vel 控制）
-    base_qpos_start: Optional[int] = None
-    base_dof_start: Optional[int] = None
-    if mapping and mapping[0][2] == 7:
-        base_qpos_start = mapping[0][1]
-        base_dof_start = mapping[0][3]
-    use_base_keyboard = base_qpos_start is not None and base_dof_start is not None and keyboard is not None
-    # 重力切换：按键在 gravity 与 gravity_alt 之间切换（需 pynput）
-    use_gravity_toggle = bool(gravity_alt and gravity_alt.strip() and keyboard is not None)
-    def _parse_gravity_vec(s: str) -> np.ndarray:
-        parts = s.strip().split()
-        return np.array([float(parts[i]) if i < len(parts) else 0.0 for i in range(3)], dtype=np.float64)
-    gravity_arr = _parse_gravity_vec(gravity)
-    gravity_alt_arr: Optional[np.ndarray] = _parse_gravity_vec(gravity_alt) if use_gravity_toggle else None
-    gravity_toggle_key_lower = (gravity_toggle_key.strip().lower() or "z")[:1] if gravity_toggle_key else "z"
-    # 初始姿态：用 keyframe（若有）设轨迹第一帧，否则仅写 qpos + mj_forward
     if mapping and traj is not None and traj.size > 0:
-        _set_initial_pose_from_traj(model, data, mapping, traj[0], zero_vel=True)
+        _print_traj_vs_qpos(model, data, traj, joint_names or [], mapping, waypoint_idx=0,
+                            label="Viewer: NPY_wp0 vs qpos_initial")
 
     num_waypoints = traj.shape[0] if traj is not None and traj.ndim >= 2 else 0
     steps_per_waypoint = max(1, int(SECONDS_PER_WAYPOINT / model.opt.timestep))
 
-    def step_and_sync(playback_step_idx: int, do_step: bool = True, skip_base: bool = False) -> None:
-        """应用轨迹目标；若 skip_base 则不对 base 写 qpos/qvel（由键盘 vel 控制）。"""
+    def step_and_sync(playback_step_idx: int):
         if num_waypoints > 0 and traj is not None and mapping:
             wp = min(int(playback_step_idx) // steps_per_waypoint, num_waypoints - 1)
-            _apply_velocity_to_target(
-                model, data, mapping, traj[wp],
-                kp=vel_gain, max_vel_lin=max_vel_lin, max_vel_ang=max_vel_ang,
-                skip_base=skip_base,
-            )
-        if do_step:
-            mujoco.mj_step(model, data)
-
-    # pynput 键盘状态（灵巧手 base 世界系移动/旋转）
-    keys_pressed: Set[str] = set()
-    keys_lock = threading.Lock()
-
-    def _key_to_char(k: Any) -> Optional[str]:
-        if hasattr(k, "char") and k.char is not None and isinstance(k.char, str) and len(k.char) == 1:
-            return k.char.lower()
-        return None
-
-    def on_press(k: Any) -> None:
-        c = _key_to_char(k)
-        if c is not None:
-            with keys_lock:
-                keys_pressed.add(c)
-                if BASE_KEYBOARD_DEBUG_INTERVAL > 0 and c in "qawsedrftgyh":
-                    print(f"[DEBUG base_kb] on_press: {c!r} -> keys_pressed={set(keys_pressed)}")
-
-    def on_release(k: Any) -> None:
-        c = _key_to_char(k)
-        if c is not None:
-            with keys_lock:
-                keys_pressed.discard(c)
-                if BASE_KEYBOARD_DEBUG_INTERVAL > 0 and c in "qawsedrftgyh":
-                    print(f"[DEBUG base_kb] on_release: {c!r} -> keys_pressed={set(keys_pressed)}")
-
-    kb_listener: Optional[Any] = None
-    if keyboard is not None and (base_qpos_start is not None and base_dof_start is not None or use_gravity_toggle):
-        kb_listener = keyboard.Listener(on_press=on_press, on_release=on_release)
-        kb_listener.daemon = True
-        kb_listener.start()
-        if base_qpos_start is not None and base_dof_start is not None:
-            print(f"[DEBUG base_kb] base_qpos_start={base_qpos_start} base_dof_start={base_dof_start} pynput listener 已启动")
-        if use_gravity_toggle:
-            print(f"[INFO] 按 [{gravity_toggle_key_lower}] 在默认重力与 gravity_alt 之间切换")
-    else:
-        print(f"[DEBUG base_kb] 未启用: base_qpos_start={base_qpos_start} base_dof_start={base_dof_start} keyboard={keyboard is not None}")
-
-    # Reset 键（Backspace）时用 keyframe 0 重置，而不是 mj_resetData（全零）
-    viewer_ref: List[Any] = [None]
-
-    def key_callback(keycode: int) -> None:
-        # Backspace = 8（ASCII），MuJoCo 中常用作 Reset
-        if keycode == 8 and model.nkey > 0:
-            v = viewer_ref[0]
-            if v is not None:
-                with v.lock():
-                    mujoco.mj_resetDataKeyframe(model, data, 0)
-                    mujoco.mj_forward(model, data)
+            _apply_velocity_to_target(model, data, mapping, traj[wp], kp=vel_gain, max_vel_lin=max_vel_lin,
+                                      max_vel_ang=max_vel_ang)
+        mujoco.mj_step(model, data)
 
     t0 = time.monotonic()
     playback_step_idx = 0
-    with mujoco.viewer.launch_passive(model, data, key_callback=key_callback) as viewer:
-        viewer_ref[0] = viewer
-        # 设置相机位置（自由相机：lookat + distance + azimuth + elevation）
-        with viewer.lock():
-            if camera_lookat is not None and len(camera_lookat) >= 3:
-                viewer.cam.lookat[:] = camera_lookat[:3]
-            if camera_distance is not None and camera_distance > 0:
-                viewer.cam.distance = camera_distance
-            if camera_azimuth is not None:
-                viewer.cam.azimuth = np.deg2rad(float(camera_azimuth))
-            if camera_elevation is not None:
-                viewer.cam.elevation = np.deg2rad(float(camera_elevation))
+    with mujoco.viewer.launch_passive(model, data) as viewer:
         print("[INFO] MuJoCo 窗口已打开（灵巧手场景）" if robot_mjcf_path else "[INFO] MuJoCo 窗口已打开（Demo）")
         print("[INFO] 运行最多 {:.0f} 秒。关闭窗口可提前结束。".format(timeout_s))
-        if use_base_keyboard:
-            print("[INFO] 键盘控制 base（世界系 vel）: qa/ws/ed 平移 vx/vy/vz | rf/tg/yh 旋转 wx/wy/wz")
-        # 重力切换状态（按键边沿触发）
-        use_alt_gravity = False
-        last_frame_toggle_key_pressed = False
+
         # 打印 DOF 报错对应的关节名称
         # 假设报错通常在 DOF 9 或 26，这里通用化打印
         print(f"[DEBUG] Model NV (DOF): {model.nv}, NU (Ctrl): {model.nu}")
@@ -319,57 +171,18 @@ def run_mujoco_viewer(
                     j_id = model.dof_jntid[d]
                     j_name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, j_id)
                     print(f"[DEBUG] DOF {d} -> Joint ID {j_id} -> Name: {j_name}")
-            
+
         while viewer.is_running() and (time.monotonic() - t0) < timeout_s:
-            with viewer.lock():
-                if use_gravity_toggle and gravity_alt_arr is not None:
-                    with keys_lock:
-                        snap = set(keys_pressed)
-                    toggle_key_pressed = gravity_toggle_key_lower in snap
-                    if toggle_key_pressed and not last_frame_toggle_key_pressed:
-                        use_alt_gravity = not use_alt_gravity
-                        model.opt.gravity[:] = gravity_alt_arr if use_alt_gravity else gravity_arr
-                        print("[INFO] 重力切换为:", "gravity_alt" if use_alt_gravity else "gravity", model.opt.gravity.copy())
-                    last_frame_toggle_key_pressed = toggle_key_pressed
-                step_and_sync(playback_step_idx, do_step=False, skip_base=use_base_keyboard)
-                if use_base_keyboard:
-                    with keys_lock:
-                        snap = set(keys_pressed)
-                    _apply_base_keyboard(
-                        data, base_dof_start, base_qpos_start, snap,
-                        BASE_VEL_LIN, BASE_VEL_ANG, debug_frame=playback_step_idx,
-                    )
-                mujoco.mj_forward(model, data)
-            mujoco.mj_step(model, data)
+            step_and_sync(playback_step_idx)
             playback_step_idx += 1
             viewer.sync()
-            
+
         # 轨迹播放结束后，继续保持仿真，直到手动关闭窗口
         print("[INFO] 轨迹播放结束，进入保持模式 (Hold)... 请手动关闭窗口。")
-        hold_frame = 0
         while viewer.is_running():
-            with viewer.lock():
-                if use_gravity_toggle and gravity_alt_arr is not None:
-                    with keys_lock:
-                        snap = set(keys_pressed)
-                    toggle_key_pressed = gravity_toggle_key_lower in snap
-                    if toggle_key_pressed and not last_frame_toggle_key_pressed:
-                        use_alt_gravity = not use_alt_gravity
-                        model.opt.gravity[:] = gravity_alt_arr if use_alt_gravity else gravity_arr
-                        print("[INFO] 重力切换为:", "gravity_alt" if use_alt_gravity else "gravity", model.opt.gravity.copy())
-                    last_frame_toggle_key_pressed = toggle_key_pressed
-                if use_base_keyboard:
-                    with keys_lock:
-                        snap = set(keys_pressed)
-                    _apply_base_keyboard(
-                        data, base_dof_start, base_qpos_start, snap,
-                        BASE_VEL_LIN, BASE_VEL_ANG, debug_frame=hold_frame,
-                    )
-                mujoco.mj_forward(model, data)
             mujoco.mj_step(model, data)
             viewer.sync()
             time.sleep(model.opt.timestep)
-            hold_frame += 1
 
         return True
 
@@ -437,24 +250,22 @@ def _get_robot_urdf_path(manip_cfg_file: str) -> str:
 
 
 def _world_cfg_to_mjcf(
-    world_cfg: Any,
-    include_hand_placeholder: bool = True,
-    include_hand_origin_body: bool = False,
-    npy_path: str = "",
-    scene_path: Any = None,
-    friction: float = 1.0,
-    object_deformable: Optional[bool] = None,
-    condim: int = 6,
-    hand_init_pose: Optional[np.ndarray] = None,
-    timestep: float = 0.0005,
-    object_geom: Optional[Dict[str, Any]] = None,
-    gravity: str = "0 0 0",
+        world_cfg: Any,
+        include_hand_placeholder: bool = True,
+        include_hand_origin_body: bool = False,
+        npy_path: str = "",
+        scene_path: Any = None,
+        friction: float = 1.0,
+        object_deformable: Optional[bool] = None,
+        condim: int = 6,
+        hand_init_pose: Optional[np.ndarray] = None,
+        timestep: float = 0.0005,
 ) -> str:
     """从 world_cfg 生成 MJCF（桌面+物体+可选手占位/hand_origin）。
     object_deformable: 若指定则覆盖 world_cfg 中 mesh 的 deformable；否则用 mesh 配置。
     condim: 接触维度，6 表示 3 平移+3 旋转（含扭转/滚动摩擦），手与物体均使用。
-    object_geom: 被抓物体（刚体）geom 配置，来自 YAML object 段：mass, friction, solref, solimp, contype, conaffinity。
     """
+
     def _project_root() -> str:
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -502,6 +313,7 @@ def _world_cfg_to_mjcf(
             if c and os.path.exists(c):
                 return os.path.abspath(c)
         return None
+
     table_pos, table_size = "0 0 -0.4", "4 3 0.02"
     obj_pos, obj_quat = "0 0 0.46", "1 0 0 0"
     obj_mesh_file = obj_scale = None
@@ -520,7 +332,7 @@ def _world_cfg_to_mjcf(
         p = t.get("pose", [0, 0, -0.1, 1, 0, 0, 0])
         d = t.get("dims", [0.8, 0.6, 0.04])
         table_pos = f"{p[0]} {p[1]} {p[2]}"
-        table_size = f"{d[0]/2} {d[1]/2} {d[2]/2}"
+        table_size = f"{d[0] / 2} {d[1] / 2} {d[2] / 2}"
     if not ("mesh" in cfg and cfg["mesh"]):
         raise ValueError(
             f"world_cfg 缺少 mesh 配置，无法构建物体；npy_path={npy_path!r}, scene_path={scene_path!r}"
@@ -554,7 +366,8 @@ def _world_cfg_to_mjcf(
     poisson = float(m.get("poisson", 0.2))
     flex_damping = float(m.get("damping", 0.5))
     # flexcomp 类型：mesh=2D 三角面，gmsh=3D 四面体等（.msh 或 mesh.flex_type 指定）
-    flex_type = m.get("flex_type", "").strip().lower() or ("gmsh" if (obj_mesh_file or "").lower().endswith(".msh") else "mesh")
+    flex_type = m.get("flex_type", "").strip().lower() or (
+        "gmsh" if (obj_mesh_file or "").lower().endswith(".msh") else "mesh")
 
     if deformable:
         # MuJoCo 3.0+ flexcomp：type=mesh 为 2D 可变形面，type=gmsh 为 3D 体网格（.msh）
@@ -566,39 +379,30 @@ def _world_cfg_to_mjcf(
       </flexcomp>"""
         mesh_asset = ""
     else:
-        # 刚体：freejoint + mesh geom（参数来自 object_geom，缺省用默认值）
-        og = object_geom or {}
-        obj_mass = float(og.get("mass", 0.3))
-        obj_friction = float(og.get("friction", 1.0))
-        obj_sr = og.get("solref", (1.0, 0.95))
-        obj_si = og.get("solimp", (0.0, 0.0, 0.1, 0.5, 2.0))
-        obj_contype = int(og.get("contype", 1))
-        obj_conaff = int(og.get("conaffinity", 2))
-        sr_str = f"{obj_sr[0]} {obj_sr[1]}" if isinstance(obj_sr, (tuple, list)) and len(obj_sr) >= 2 else "1 0.95"
-        si_str = f"{obj_si[0]} {obj_si[1]} {obj_si[2]} {obj_si[3]} {obj_si[4]}" if isinstance(obj_si, (tuple, list)) and len(obj_si) >= 5 else "0 0 0.1 0.5 2"
+        # 刚体：freejoint + mesh geom
         obj_body_content = f"""      <freejoint name="object_joint"/>
-      <geom name="obj" type="mesh" mesh="{mesh_name}" rgba="0.2 0.6 0.9 1" mass="{obj_mass}" friction="{obj_friction} 0.005 0.0001" condim="{condim}" contype="{obj_contype}" conaffinity="{obj_conaff}" solref="{sr_str}" solimp="{si_str}"/>"""
+      <geom name="obj" type="mesh" mesh="{mesh_name}" rgba="0.2 0.6 0.9 1" mass="0.3" friction="1 0.005 0.0001" condim="{condim}" contype="1" conaffinity="1" solref="1 0.95" solimp="0.0 0 0.1 0.5 2"/>"""
         mesh_asset = f'    <mesh name="{mesh_name}" file="{mesh_path_abs}" scale="{obj_scale}"/>'
 
     hand_block = ""
     if include_hand_placeholder:
         hand_block = """
-    <body name="hand_base" pos="0.2 0 0.5" gravcomp="1">
+    <body name="hand_base" pos="0.2 0 0.5">
       <freejoint name="hand_free"/>
       <geom name="hand_vis" type="box" size="0.04 0.06 0.02" rgba="0.9 0.3 0.2 0.9"/>
     </body>"""
     elif include_hand_origin_body:
-        # hand_base 位置设为 (0, 0, 0)，gravcomp="1" 使手 base 不受重力影响
+        # hand_base 位置设为 (0, 0, 0)，这样 freejoint 的位置就是绝对位置（与 robot_pose 中的位置一致）
         hand_block = """
-    <body name="hand_base" pos="0 0 0" gravcomp="1">
+    <body name="hand_base" pos="0 0 0">
       <freejoint name="hand_free"/>
-        <inertial pos="0 0 0" mass="1e6" diaginertia="1e4 1e4 1e4"/>
+      <inertial pos="0 0 0" mass="0.01" diaginertia="1e-5 1e-5 1e-5"/>
       <body name="hand_origin"/>
     </body>"""
-    
-    print(f"[DEBUG] _world_cfg_to_mjcf: 使用 timestep={timestep} s, gravity={gravity!r}")
+
+    print(f"[DEBUG] _world_cfg_to_mjcf: 使用 timestep={timestep} s")
     return f"""<mujoco model="grasp_eval">
-  <option timestep="{timestep}" gravity="{gravity}" cone="elliptic" impratio="10"/>
+  <option timestep="{timestep}" gravity="0 0 0" cone="elliptic" impratio="10"/>
   <default>
     <geom condim="{condim}" solimp="0.009 0.0095 1 0.5 2" solref="0.05 1"/>
   </default>
@@ -613,29 +417,23 @@ def _world_cfg_to_mjcf(
 {obj_body_content}
     </body>{hand_block}
   </worldbody>
-  <keyframe>
-    <key name="home" />
-  </keyframe>
 </mujoco>
 """
 
 
 def build_mujoco_scene_for_grasp(
-    world_cfg: Any,
-    robot_mjcf_path: str,
-    joint_names: List[str],
-    npy_path: str = "",
-    scene_path: Any = None,
-    friction: float = 1.0,
-    object_deformable: Optional[bool] = None,
-    save_xml_path: Optional[str] = None,
-    solref: Optional[Tuple[float, float]] = None,
-    solimp: Optional[Tuple[float, float, float, float, float]] = None,
-    condim: int = 6,
-    timestep: float = 0.0005,
-    object_geom: Optional[Dict[str, Any]] = None,
-    hand_geom: Optional[Dict[str, Any]] = None,
-    gravity: str = "0 0 0",
+        world_cfg: Any,
+        robot_mjcf_path: str,
+        joint_names: List[str],
+        npy_path: str = "",
+        scene_path: Any = None,
+        friction: float = 1.0,
+        object_deformable: Optional[bool] = None,
+        save_xml_path: Optional[str] = None,
+        solref: Optional[Tuple[float, float]] = None,
+        solimp: Optional[Tuple[float, float, float, float, float]] = None,
+        condim: int = 6,
+        timestep: float = 0.0005,
 ) -> Optional[Tuple[Any, Any]]:
     """从 world_cfg 建 MuJoCo 场景；有 robot_mjcf_path 则 attach 灵巧手。
     condim=6 时接触含 3 平移+3 旋转（扭转/滚动摩擦），手与物体均使用。
@@ -645,13 +443,12 @@ def build_mujoco_scene_for_grasp(
         xml = _world_cfg_to_mjcf(
             world_cfg, npy_path=npy_path, scene_path=scene_path, friction=friction,
             object_deformable=object_deformable, condim=condim, hand_init_pose=None, timestep=timestep,
-            object_geom=object_geom, gravity=gravity,
         )
         model = mujoco.MjModel.from_xml_string(xml)
         data = mujoco.MjData(model)
         print(f"[DEBUG] 模型创建后实际 timestep: {model.opt.timestep} s")
         return (model, data)
-    
+
     # 解析 mjcf_path：如果传入的已经是绝对路径且存在，直接使用；否则尝试解析相对路径
     mjcf_path = robot_mjcf_path.strip()
     if os.path.isabs(mjcf_path) and os.path.isfile(mjcf_path):
@@ -662,13 +459,13 @@ def build_mujoco_scene_for_grasp(
             _project_root = os.path.dirname(_script_dir)
             mjcf_path = os.path.join(_project_root, mjcf_path)
         mjcf_path = os.path.abspath(mjcf_path)
-    
+
     if not os.path.isfile(mjcf_path):
         raise FileNotFoundError(f"手部 MJCF 文件不存在: {mjcf_path}")
-    
+
     print(f"[INFO] 使用手部 MJCF: {mjcf_path}")
     print(f"[DEBUG] build_mujoco_scene_for_grasp: 使用 timestep={timestep} s")
-    
+
     # 获取手部初始位置（第一个路点的前7个值）用于调整物体位置
     hand_init_pose_for_obj = None
     if joint_names and len(joint_names) > 0:
@@ -687,7 +484,7 @@ def build_mujoco_scene_for_grasp(
                         hand_init_pose_for_obj = robot_pose[0, :7]
         except Exception as e:
             print(f"[WARN] 无法从 npy 文件读取手部初始位置: {e}")
-    
+
     scene_xml = _world_cfg_to_mjcf(
         world_cfg,
         include_hand_placeholder=False,
@@ -699,15 +496,13 @@ def build_mujoco_scene_for_grasp(
         condim=condim,
         hand_init_pose=hand_init_pose_for_obj,
         timestep=timestep,
-        object_geom=object_geom,
-        gravity=gravity,
     )
     scene_spec = mujoco.MjSpec.from_string(scene_xml)
     hand_origin_body = scene_spec.body("hand_origin")
     if hand_origin_body is None:
         raise RuntimeError("hand_origin body not found")
     hand_frame = hand_origin_body.add_frame()
-    
+
     # 直接加载 MJCF 文件
     mjcf_dir = os.path.dirname(mjcf_path)
     original_cwd = os.getcwd()
@@ -715,7 +510,7 @@ def build_mujoco_scene_for_grasp(
     mjcf_filename = os.path.basename(mjcf_path)
     hand_model = mujoco.MjModel.from_xml_path(mjcf_filename)
     os.chdir(original_cwd)
-    
+
     # 保存临时文件用于注入 friction
     hand_mjcf_path = tempfile.mktemp(suffix=".xml", prefix="hand_mjcf_", dir=mjcf_dir)
     mujoco.mj_saveLastXML(hand_mjcf_path, hand_model)
@@ -724,23 +519,17 @@ def build_mujoco_scene_for_grasp(
         hand_xml_content = f.read()
     with open(hand_mjcf_path, "w", encoding="utf-8") as f:
         f.write(_inject_geom_friction_in_mjcf(hand_xml_content, friction, condim=condim))
-    
+
     original_cwd = os.getcwd()
     os.chdir(mjcf_dir)
     hand_spec = mujoco.MjSpec.from_file(os.path.basename(hand_mjcf_path))
     scene_spec.attach(hand_spec, frame=hand_frame, prefix="hand_")
-    # 与 DexGraspBench 一致：保证至少有一个 keyframe（key 0），用于 mj_resetDataKeyframe 设初始姿态
-    scene_spec.add_key()
     model = scene_spec.compile()
     os.chdir(original_cwd)
     data = mujoco.MjData(model)
     print(f"[DEBUG] 模型创建后实际 timestep: {model.opt.timestep} s")
-    # 统一摩擦与接触：手/桌面用统一值；物体用 object_geom；手 contype/conaffinity 用 hand_geom
-    _apply_unified_friction(
-        model, friction, solref=solref, solimp=solimp, condim=condim,
-        object_geom=object_geom, hand_geom=hand_geom,
-    )
-    _print_geom_contact_in_sim(model)
+    # 统一摩擦与接触：手/物体/桌面 geom 使用与场景一致的 condim、friction、solref、solimp
+    _apply_unified_friction(model, friction, solref=solref, solimp=solimp, condim=condim)
     if save_xml_path:
         mujoco.mj_saveLastXML(save_xml_path, model)
         # mj_saveLastXML 不会把 model.geom_friction/solref/solimp 写回 XML，故后处理：给所有 <geom> 注入
@@ -760,18 +549,18 @@ def build_mujoco_scene_for_grasp(
 
 
 def _inject_geom_friction_in_mjcf(
-    content: str, friction: float, condim: Optional[int] = None
+        content: str, friction: float, condim: Optional[int] = None
 ) -> str:
     """在 MJCF 字符串中为没有 friction 的 <geom> 注入 friction（及可选的 condim），便于保存的 XML 中可见。"""
     return _inject_geom_contact_in_mjcf(content, friction, solref=None, solimp=None, condim=condim)
 
 
 def _inject_geom_contact_in_mjcf(
-    content: str,
-    friction: float,
-    solref: Optional[Tuple[float, float]] = None,
-    solimp: Optional[Tuple[float, float, float, float, float]] = None,
-    condim: Optional[int] = None,
+        content: str,
+        friction: float,
+        solref: Optional[Tuple[float, float]] = None,
+        solimp: Optional[Tuple[float, float, float, float, float]] = None,
+        condim: Optional[int] = None,
 ) -> str:
     """在 MJCF 中为 <geom> 注入 friction（及可选的 solref、solimp、condim），便于保存的 XML 中可见。"""
     friction_attr = f' friction="{friction} 0.005 0.0001"'
@@ -806,38 +595,16 @@ DEFAULT_SOLIMP = (0.9, 0.95, 0.001, 0.5, 2.0)
 
 
 def _apply_unified_friction(
-    model: Any,
-    friction: float,
-    solref: Optional[Tuple[float, float]] = None,
-    solimp: Optional[Tuple[float, float, float, float, float]] = None,
-    condim: int = 6,
-    object_geom: Optional[Dict[str, Any]] = None,
-    hand_geom: Optional[Dict[str, Any]] = None,
+        model: Any,
+        friction: float,
+        solref: Optional[Tuple[float, float]] = None,
+        solimp: Optional[Tuple[float, float, float, float, float]] = None,
+        condim: int = 6,
 ) -> None:
-    """将手/桌面的 geom 用统一 friction/solref/solimp；物体用 object_geom；手 geom 的 contype/conaffinity 用 hand_geom。"""
+    """将手/物体/桌面的 geom 的 condim、摩擦与 solref/solimp 设为与场景统一（body 名 table、object 或 hand_ 前缀）。"""
     import mujoco
     solref = solref or DEFAULT_SOLREF
     solimp = solimp or DEFAULT_SOLIMP
-    obj_friction = None
-    obj_solref = None
-    obj_solimp = None
-    if object_geom:
-        obj_friction = object_geom.get("friction")
-        if obj_friction is not None:
-            obj_friction = float(obj_friction)
-        sr = object_geom.get("solref")
-        if sr is not None and isinstance(sr, (list, tuple)) and len(sr) >= 2:
-            obj_solref = (float(sr[0]), float(sr[1]))
-        si = object_geom.get("solimp")
-        if si is not None and isinstance(si, (list, tuple)) and len(si) >= 5:
-            obj_solimp = (float(si[0]), float(si[1]), float(si[2]), float(si[3]), float(si[4]))
-    hand_contype = None
-    hand_conaffinity = None
-    if hand_geom:
-        if hand_geom.get("contype") is not None:
-            hand_contype = int(hand_geom["contype"])
-        if hand_geom.get("conaffinity") is not None:
-            hand_conaffinity = int(hand_geom["conaffinity"])
     for i in range(model.ngeom):
         body_id = model.geom_bodyid[i]
         body_name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, body_id) or ""
@@ -847,46 +614,20 @@ def _apply_unified_friction(
         is_object = body_name == "object" or geom_name == "obj"
         if is_hand or is_table or is_object:
             model.geom_condim[i] = condim
-            if is_hand and hand_contype is not None:
-                model.geom_contype[i] = hand_contype
-            if is_hand and hand_conaffinity is not None:
-                model.geom_conaffinity[i] = hand_conaffinity
-            use_f = obj_friction if (is_object and obj_friction is not None) else friction
-            model.geom_friction[i, 0] = use_f
+            model.geom_friction[i, 0] = friction
             model.geom_friction[i, 1] = 0.005
             model.geom_friction[i, 2] = 0.0001
-            use_sr = (obj_solref if (is_object and obj_solref is not None) else None) or solref
-            use_si = (obj_solimp if (is_object and obj_solimp is not None) else None) or solimp
-            model.geom_solref[i, 0] = use_sr[0]
-            model.geom_solref[i, 1] = use_sr[1]
-            model.geom_solimp[i, 0] = use_si[0]
-            model.geom_solimp[i, 1] = use_si[1]
-            model.geom_solimp[i, 2] = use_si[2]
-            model.geom_solimp[i, 3] = use_si[3]
-            model.geom_solimp[i, 4] = use_si[4]
-
-
-def _print_geom_contact_in_sim(model: Any) -> None:
-    """仿真中打印所有 geom 的 friction、solref、solimp、contype、conaffinity（用于确认是否生效）。"""
-    import mujoco
-    print("[SIM] geom 接触参数（仿真中实际使用）:")
-    for i in range(model.ngeom):
-        body_id = model.geom_bodyid[i]
-        body_name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, body_id) or ""
-        geom_name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, i) or ""
-        f = model.geom_friction[i]
-        sr = model.geom_solref[i]
-        si = model.geom_solimp[i]
-        ct, ca = int(model.geom_contype[i]), int(model.geom_conaffinity[i])
-        print(f"  geom[{i}] body={body_name!s} geom={geom_name!s} condim={model.geom_condim[i]} "
-              f"contype={ct} conaffinity={ca} "
-              f"friction=({f[0]:.4f},{f[1]:.4f},{f[2]:.4f}) solref=({sr[0]:.4f},{sr[1]:.4f}) "
-              f"solimp=({si[0]:.4f},{si[1]:.4f},{si[2]:.4f},{si[3]:.4f},{si[4]:.4f})")
-    print("[SIM] ---")
+            model.geom_solref[i, 0] = solref[0]
+            model.geom_solref[i, 1] = solref[1]
+            model.geom_solimp[i, 0] = solimp[0]
+            model.geom_solimp[i, 1] = solimp[1]
+            model.geom_solimp[i, 2] = solimp[2]
+            model.geom_solimp[i, 3] = solimp[3]
+            model.geom_solimp[i, 4] = solimp[4]
 
 
 def _build_joint_qpos_map(
-    model: Any, joint_names: List[str], nq_traj: int
+        model: Any, joint_names: List[str], nq_traj: int
 ) -> List[Tuple[int, int, int, int, int]]:
     """(traj_start, qpos_start, ndof_q, dof_start, ndof_v) 映射，供写 data.qpos 或速度控制写 data.qvel。"""
     import mujoco
@@ -939,7 +680,7 @@ def _build_joint_qpos_map(
             "hand_" + jname,  # 优先尝试：attach 后的标准格式
             jname,  # 备选：原始名称
         ]
-        
+
         jid = -1
         matched_name = None
         for name_to_try in name_candidates:
@@ -949,19 +690,19 @@ def _build_joint_qpos_map(
                 matched_count += 1
                 matched_joints.append((i, jname, matched_name))
                 break
-        
+
         if jid < 0:
             # 如果所有候选名称都失败，打印警告但继续处理其他关节
             print(f"[WARN] 无法找到关节 '{jname}' (索引 {i})，尝试的名称: {name_candidates}")
             continue
-        
+
         qpos_adr = model.jnt_qposadr[jid]
         jtype = model.jnt_type[jid]
         ndof_q = 7 if jtype == mujoco.mjtJoint.mjJNT_FREE else 1
         ndof_v = 6 if jtype == mujoco.mjtJoint.mjJNT_FREE else 1
         dof_adr = model.jnt_dofadr[jid]
         mapping.append((traj_finger_start + i, int(qpos_adr), ndof_q, int(dof_adr), ndof_v))
-    
+
     # 打印匹配结果摘要
     if matched_count > 0:
         print(f"[INFO] 关节匹配成功: {matched_count}/{n_finger} 个关节")
@@ -971,7 +712,7 @@ def _build_joint_qpos_map(
         else:
             print(f"[DEBUG]   前3个: {[f'{orig}->{matched}' for _, orig, matched in matched_joints[:3]]}")
             print(f"[DEBUG]   后3个: {[f'{orig}->{matched}' for _, orig, matched in matched_joints[-3:]]}")
-    
+
     if matched_count < n_finger:
         print(f"[WARN] 关节匹配不完整：期望 {n_finger} 个关节，实际匹配 {matched_count} 个")
         print(f"[DEBUG] joint_names 前几个: {joint_names[:min(5, len(joint_names))]}")
@@ -982,20 +723,20 @@ def _build_joint_qpos_map(
             if jname.startswith("hand_"):
                 hand_joints.append(jname)
         print(f"[DEBUG] 模型中以 'hand_' 开头的关节 ({len(hand_joints)} 个): {hand_joints[:min(10, len(hand_joints))]}")
-    
+
     print(f"[DEBUG] 最终映射数量: {len(mapping)} (期望: {1 + n_finger if has_hand_free else n_finger})")
-    
+
     return mapping
 
 
 def _print_traj_vs_qpos(
-    model: Any,
-    data: Any,
-    traj: np.ndarray,
-    joint_names: List[str],
-    mapping: List[Tuple[int, int, int, int, int]],
-    waypoint_idx: int = 0,
-    label: str = "traj_vs_qpos",
+        model: Any,
+        data: Any,
+        traj: np.ndarray,
+        joint_names: List[str],
+        mapping: List[Tuple[int, int, int, int, int]],
+        waypoint_idx: int = 0,
+        label: str = "traj_vs_qpos",
 ) -> None:
     """打印 NPY 轨迹与 MuJoCo qpos 逐项对比，便于排查关节对应错误。"""
     import mujoco
@@ -1003,12 +744,14 @@ def _print_traj_vs_qpos(
     if traj.ndim >= 2:
         q = np.asarray(traj[waypoint_idx]).flatten()
     nq = len(q)
+
     # 从 model 根据 qpos_start 反查关节名
     def _qpos_to_joint_name(qpos_start: int, ndof_q: int) -> str:
         for jid in range(model.njnt):
             if model.jnt_qposadr[jid] == qpos_start:
                 return mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, jid) or f"jnt_{jid}"
         return f"qpos_{qpos_start}"
+
     print(f"\n--- [{label}] NPY 轨迹 vs MuJoCo qpos (waypoint={waypoint_idx}, traj_dim={nq}) ---")
     for k, (traj_start, qpos_start, ndof_q, dof_start, ndof_v) in enumerate(mapping):
         end = min(traj_start + ndof_q, nq)
@@ -1016,7 +759,7 @@ def _print_traj_vs_qpos(
         if n_compare <= 0:
             continue
         traj_vals = q[traj_start:end]
-        qpos_vals = data.qpos[qpos_start : qpos_start + n_compare]
+        qpos_vals = data.qpos[qpos_start: qpos_start + n_compare]
         if traj_start == 0:
             npy_name = "base(xyz,qw,qx,qy,qz)"
         else:
@@ -1027,87 +770,47 @@ def _print_traj_vs_qpos(
         max_diff = float(np.max(diff)) if diff.size else 0.0
         ok = "OK" if max_diff < 1e-5 else "DIFF"
         print(f"  [{k}] NPY {npy_name:32s} traj[{traj_start}:{end}] = {traj_vals}")
-        print(f"      MJ  {mj_name:32s} qpos[{qpos_start}:{qpos_start+n_compare}] = {qpos_vals}  ({ok} max_diff={max_diff:.6f})")
+        print(
+            f"      MJ  {mj_name:32s} qpos[{qpos_start}:{qpos_start + n_compare}] = {qpos_vals}  ({ok} max_diff={max_diff:.6f})")
     print("---\n")
 
 
-def _set_qpos_from_traj(
-    model: Any,
-    data: Any,
-    mapping: List[Tuple[int, int, int, int, int]],
-    q: np.ndarray,
-    zero_vel: bool = True,
-) -> None:
-    """用轨迹向量 q 设置 data.qpos（初始姿态），可选将对应 qvel 置零。"""
-    q = np.asarray(q).flatten()
-    for traj_start, qpos_start, ndof_q, dof_start, ndof_v in mapping:
-        end = min(traj_start + ndof_q, len(q))
-        n = end - traj_start
-        if n <= 0:
-            continue
-        data.qpos[qpos_start : qpos_start + n] = q[traj_start:end]
-        if zero_vel and ndof_v > 0:
-            data.qvel[dof_start : dof_start + ndof_v] = 0.0
-
-
-def _set_initial_pose_from_traj(
-    model: Any,
-    data: Any,
-    mapping: List[Tuple[int, int, int, int, int]],
-    traj_first: np.ndarray,
-    zero_vel: bool = True,
-) -> None:
-    """用轨迹第一帧设初始姿态（DexGraspBench 方式）：先 reset，再写 qpos；若有 keyframe 则写入 key_qpos/key_qvel 并用 mj_resetDataKeyframe 重置，最后 mj_forward。"""
-    import mujoco
-    mujoco.mj_resetData(model, data)
-    _set_qpos_from_traj(model, data, mapping, traj_first, zero_vel=zero_vel)
-    if model.nkey > 0:
-        model.key_qpos[0][:] = data.qpos[:]
-        model.key_qvel[0][:] = 0.0
-        mujoco.mj_resetDataKeyframe(model, data, 0)
-    mujoco.mj_forward(model, data)
-
-
 def _apply_velocity_to_target(
-    model: Any,
-    data: Any,
-    mapping: List[Tuple[int, int, int, int, int]],
-    target_q: np.ndarray,
-    kp: float = VEL_GAIN,
-    max_vel_lin: float = MAX_VEL_LIN,
-    max_vel_ang: float = MAX_VEL_ANG,
-    skip_base: bool = False,
+        model: Any,
+        data: Any,
+        mapping: List[Tuple[int, int, int, int, int]],
+        target_q: np.ndarray,
+        kp: float = VEL_GAIN,
+        max_vel_lin: float = MAX_VEL_LIN,
+        max_vel_ang: float = MAX_VEL_ANG,
 ) -> None:
-    """仅对灵巧手各关节（手指）做速度控制；base（free joint）按轨迹做位置跟随。skip_base 时跳过 base，由键盘 vel 控制。"""
+    """base 与手指均按轨迹做位置跟随（直接写 qpos）。原先手指用速度控制，但 mj_step 会覆盖 qvel 且无 actuator 时几乎不动，故改为直接设 qpos。"""
     import mujoco
     q = np.asarray(target_q).flatten()
     for traj_start, qpos_start, ndof_q, dof_start, ndof_v in mapping:
-        if skip_base and ndof_q == 7:
-            continue
         end = min(traj_start + ndof_q, len(q))
         target = q[traj_start:end]
-        current = data.qpos[qpos_start : qpos_start + (end - traj_start)].copy()
+        n_write = end - traj_start
         if ndof_q == 7:
-            # base（free joint）：只做位置跟随，不施加速度
-            data.qpos[qpos_start : qpos_start + 7] = target
-            data.qvel[dof_start : dof_start + 6] = 0.0
+            # base（free joint）：位置跟随
+            data.qpos[qpos_start: qpos_start + 7] = target
+            data.qvel[dof_start: dof_start + 6] = 0.0
         else:
-            # 手指等关节：速度控制趋近目标
-            err = target[0] - current[0]
-            vel = np.clip(kp * err, -max_vel_ang, max_vel_ang)
-            data.qvel[dof_start] = vel
+            # 手指等 1-dof 关节：直接位置跟随（与 NPY 一致），否则动力学会覆盖 qvel 导致手指不动
+            data.qpos[qpos_start: qpos_start + n_write] = target
+            data.qvel[dof_start: dof_start + ndof_v] = 0.0
 
 
 def run_one_grasp_physics(
-    model: Any,
-    data: Any,
-    traj: np.ndarray,
-    joint_names: List[str],
-    waypoint_duration_steps: int = 100,
-    hold_steps: int = 50,
-    vel_gain: float = VEL_GAIN,
-    max_vel_lin: float = MAX_VEL_LIN,
-    max_vel_ang: float = MAX_VEL_ANG,
+        model: Any,
+        data: Any,
+        traj: np.ndarray,
+        joint_names: List[str],
+        waypoint_duration_steps: int = 100,
+        hold_steps: int = 50,
+        vel_gain: float = VEL_GAIN,
+        max_vel_lin: float = MAX_VEL_LIN,
+        max_vel_ang: float = MAX_VEL_ANG,
 ) -> None:
     """回放轨迹（速度控制趋近路点）并保持 hold_steps 步。"""
     import mujoco
@@ -1121,7 +824,8 @@ def run_one_grasp_physics(
     # 打印手部初始位置（第一个路点的前7个值）
     if traj.shape[0] > 0:
         hand_init_pos = traj[0, :7]
-        print(f"[DEBUG] 手部初始位置: pos=({hand_init_pos[0]:.4f}, {hand_init_pos[1]:.4f}, {hand_init_pos[2]:.4f}), quat=({hand_init_pos[3]:.4f}, {hand_init_pos[4]:.4f}, {hand_init_pos[5]:.4f}, {hand_init_pos[6]:.4f})")
+        print(
+            f"[DEBUG] 手部初始位置: pos=({hand_init_pos[0]:.4f}, {hand_init_pos[1]:.4f}, {hand_init_pos[2]:.4f}), quat=({hand_init_pos[3]:.4f}, {hand_init_pos[4]:.4f}, {hand_init_pos[5]:.4f}, {hand_init_pos[6]:.4f})")
     mapping = _build_joint_qpos_map(model, joint_names or [], nq_traj)
     if not mapping:
         print("[DEBUG] 映射为空，尝试查找 hand_free 关节")
@@ -1135,40 +839,44 @@ def run_one_grasp_physics(
             return
     print(f"[DEBUG] Physics模式最终映射数量: {len(mapping)}")
 
-    # 初始姿态：用 keyframe（若有）设轨迹第一帧，否则仅写 qpos + mj_forward
-    _set_initial_pose_from_traj(model, data, mapping, traj[0], zero_vel=True)
+    mujoco.mj_resetData(model, data)
+    # 打印 NPY 与 MuJoCo qpos 对比（初始状态 vs 第 0 个路点目标）
+    _print_traj_vs_qpos(model, data, traj, joint_names or [], mapping, waypoint_idx=0,
+                        label="Physics: NPY_wp0 vs qpos_initial")
     num_waypoints = traj.shape[0]
     for wp in range(num_waypoints):
         for _ in range(waypoint_duration_steps):
-            _apply_velocity_to_target(model, data, mapping, traj[wp], kp=vel_gain, max_vel_lin=max_vel_lin, max_vel_ang=max_vel_ang)
+            _apply_velocity_to_target(model, data, mapping, traj[wp], kp=vel_gain, max_vel_lin=max_vel_lin,
+                                      max_vel_ang=max_vel_ang)
             mujoco.mj_step(model, data)
     for _ in range(hold_steps):
         mujoco.mj_step(model, data)
+    # 回放结束：打印最后一帧 NPY 与当前 qpos 对比
+    last_wp = num_waypoints - 1 if num_waypoints > 0 else 0
+    _print_traj_vs_qpos(model, data, traj, joint_names or [], mapping, waypoint_idx=last_wp,
+                        label="Physics: NPY_last vs qpos_final")
 
 
 def run_mujoco_sim_stub(
-    world_cfg: Any,
-    joint_names: List[str],
-    traj: np.ndarray,
-    grasp_index: int,
-    npy_path: str,
-    robot_mjcf_path: str = "",
-    scene_path: Any = None,
-    friction: float = 1.0,
-    object_deformable: Optional[bool] = None,
-    save_xml_path: Optional[str] = None,
-    solref: Optional[Tuple[float, float]] = None,
-    solimp: Optional[Tuple[float, float, float, float, float]] = None,
-    condim: int = 6,
-    waypoint_duration_steps: int = 1500,
-    hold_steps: int = 500,
-    vel_gain: float = VEL_GAIN,
-    max_vel_lin: float = MAX_VEL_LIN,
-    max_vel_ang: float = MAX_VEL_ANG,
-    timestep: float = 0.0005,
-    object_geom: Optional[Dict[str, Any]] = None,
-    hand_geom: Optional[Dict[str, Any]] = None,
-    gravity: str = "0 0 0",
+        world_cfg: Any,
+        joint_names: List[str],
+        traj: np.ndarray,
+        grasp_index: int,
+        npy_path: str,
+        robot_mjcf_path: str = "",
+        scene_path: Any = None,
+        friction: float = 1.0,
+        object_deformable: Optional[bool] = None,
+        save_xml_path: Optional[str] = None,
+        solref: Optional[Tuple[float, float]] = None,
+        solimp: Optional[Tuple[float, float, float, float, float]] = None,
+        condim: int = 6,
+        waypoint_duration_steps: int = 1500,
+        hold_steps: int = 500,
+        vel_gain: float = VEL_GAIN,
+        max_vel_lin: float = MAX_VEL_LIN,
+        max_vel_ang: float = MAX_VEL_ANG,
+        timestep: float = 0.0005,
 ) -> None:
     """建场景并回放轨迹。"""
     print(f"[DEBUG] run_mujoco_sim_stub: 使用 timestep={timestep} s")
@@ -1185,9 +893,6 @@ def run_mujoco_sim_stub(
         solimp=solimp,
         condim=condim,
         timestep=timestep,
-        object_geom=object_geom,
-        hand_geom=hand_geom,
-        gravity=gravity,
     )
     if scene is None:
         return
@@ -1203,33 +908,24 @@ def run_mujoco_sim_stub(
 
 
 def evaluate_grasps_for_file(
-    npy_path: str,
-    max_grasps: int = -1,
-    grasp_index: int = 0,
-    show_viewer: bool = False,
-    viewer_timeout_s: float = 300.0,
-    robot_mjcf_path: str = "",
-    friction: float = 1.0,
-    object_deformable: Optional[bool] = None,
-    save_xml_path: Optional[str] = None,
-    solref: Optional[Tuple[float, float]] = None,
-    solimp: Optional[Tuple[float, float, float, float, float]] = None,
-    condim: int = 6,
-    waypoint_duration_steps: int = 1500,
-    hold_steps: int = 500,
-    vel_gain: float = VEL_GAIN,
-    max_vel_lin: float = MAX_VEL_LIN,
-    max_vel_ang: float = MAX_VEL_ANG,
-    timestep: float = 0.0005,
-    camera_lookat: Optional[List[float]] = None,
-    camera_distance: Optional[float] = None,
-    camera_azimuth: Optional[float] = None,
-    camera_elevation: Optional[float] = None,
-    object_geom: Optional[Dict[str, Any]] = None,
-    hand_geom: Optional[Dict[str, Any]] = None,
-    gravity: str = "0 0 0",
-    gravity_alt: Optional[str] = None,
-    gravity_toggle_key: str = "z",
+        npy_path: str,
+        max_grasps: int = -1,
+        grasp_index: int = 0,
+        show_viewer: bool = False,
+        viewer_timeout_s: float = 300.0,
+        robot_mjcf_path: str = "",
+        friction: float = 1.0,
+        object_deformable: Optional[bool] = None,
+        save_xml_path: Optional[str] = None,
+        solref: Optional[Tuple[float, float]] = None,
+        solimp: Optional[Tuple[float, float, float, float, float]] = None,
+        condim: int = 6,
+        waypoint_duration_steps: int = 1500,
+        hold_steps: int = 500,
+        vel_gain: float = VEL_GAIN,
+        max_vel_lin: float = MAX_VEL_LIN,
+        max_vel_ang: float = MAX_VEL_ANG,
+        timestep: float = 0.0005,
 ) -> int:
     """对单个 npy 回放；支持 (1,20,3,27) 时只取 robot_pose[0, grasp_index] 即 (3,27)。"""
     data: Dict[str, Any] = np.load(npy_path, allow_pickle=True).item()
@@ -1270,15 +966,6 @@ def evaluate_grasps_for_file(
                 max_vel_lin=max_vel_lin,
                 max_vel_ang=max_vel_ang,
                 timestep=timestep,
-                camera_lookat=camera_lookat,
-                camera_distance=camera_distance,
-                camera_azimuth=camera_azimuth,
-                camera_elevation=camera_elevation,
-                object_geom=object_geom,
-                hand_geom=hand_geom,
-                gravity=gravity,
-                gravity_alt=gravity_alt,
-                gravity_toggle_key=gravity_toggle_key,
             )
         run_mujoco_sim_stub(
             world_cfg, joint_names, traj, g, npy_path,
@@ -1296,9 +983,6 @@ def evaluate_grasps_for_file(
             max_vel_lin=max_vel_lin,
             max_vel_ang=max_vel_ang,
             timestep=timestep,
-            object_geom=object_geom,
-            hand_geom=hand_geom,
-            gravity=gravity,
         )
         return 1
 
@@ -1332,15 +1016,6 @@ def evaluate_grasps_for_file(
                 max_vel_lin=max_vel_lin,
                 max_vel_ang=max_vel_ang,
                 timestep=timestep,
-                camera_lookat=camera_lookat,
-                camera_distance=camera_distance,
-                camera_azimuth=camera_azimuth,
-                camera_elevation=camera_elevation,
-                object_geom=object_geom,
-                hand_geom=hand_geom,
-                gravity=gravity,
-                gravity_alt=gravity_alt,
-                gravity_toggle_key=gravity_toggle_key,
             )
         run_mujoco_sim_stub(
             world_cfg, joint_names, traj, g, npy_path,
@@ -1358,9 +1033,6 @@ def evaluate_grasps_for_file(
             max_vel_lin=max_vel_lin,
             max_vel_ang=max_vel_ang,
             timestep=timestep,
-            object_geom=object_geom,
-            hand_geom=hand_geom,
-            gravity=gravity,
         )
 
     return num_grasps
@@ -1389,22 +1061,22 @@ def main():
     if not os.path.exists(manip_cfg_path):
         raise FileNotFoundError(f"manip_cfg_file 不存在: {manip_cfg_path}")
     manip_cfg = load_yaml(manip_cfg_path)
-    
+
     # 从配置中读取 mjcf_path
     robot_mjcf_path = config.get("mjcf_path", "")
     if not robot_mjcf_path or not isinstance(robot_mjcf_path, str) or not robot_mjcf_path.strip():
         raise ValueError("请在 mujoco_eval_grasp_config.yaml 中设置 mjcf_path（手部 MJCF 文件路径）")
     robot_mjcf_path = robot_mjcf_path.strip()
-    
+
     # 解析路径：支持绝对路径或相对项目根目录（_script_dir 的父目录）
     if not os.path.isabs(robot_mjcf_path):
         _project_root = os.path.dirname(_script_dir)
         robot_mjcf_path = os.path.join(_project_root, robot_mjcf_path)
     robot_mjcf_path = os.path.abspath(robot_mjcf_path)
-    
+
     if not os.path.isfile(robot_mjcf_path):
         raise FileNotFoundError(f"手部 MJCF 文件不存在: {robot_mjcf_path}")
-    
+
     _manip_display = os.path.abspath(os.path.normpath(manip_cfg_path))
     _mjcf_display = os.path.abspath(os.path.normpath(robot_mjcf_path))
     print(f"[INFO] manip 配置: {_manip_display}, 灵巧手 MJCF: {_mjcf_display}")
@@ -1427,38 +1099,6 @@ def main():
         solimp = (float(si[0]), float(si[1]), float(si[2]), float(si[3]), float(si[4]))
 
     condim = int(config.get("condim", 6))
-    # 被抓物体（刚体）geom 配置，来自 YAML object 段
-    obj_cfg = config.get("object") or {}
-    obj_mass = float(obj_cfg.get("mass", 0.3))
-    obj_friction = obj_cfg.get("friction")
-    if obj_friction is not None:
-        obj_friction = float(obj_friction)
-    obj_sr = obj_cfg.get("solref")
-    obj_solref = None
-    if obj_sr is not None and isinstance(obj_sr, (list, tuple)) and len(obj_sr) >= 2:
-        obj_solref = (float(obj_sr[0]), float(obj_sr[1]))
-    obj_si = obj_cfg.get("solimp")
-    obj_solimp = None
-    if obj_si is not None and isinstance(obj_si, (list, tuple)) and len(obj_si) >= 5:
-        obj_solimp = (float(obj_si[0]), float(obj_si[1]), float(obj_si[2]), float(obj_si[3]), float(obj_si[4]))
-    object_geom = {
-        "mass": obj_mass,
-        "friction": obj_friction,
-        "solref": obj_solref,
-        "solimp": obj_solimp,
-        "contype": int(obj_cfg.get("contype", 1)),
-        "conaffinity": int(obj_cfg.get("conaffinity", 2)),
-    }
-    # 灵巧手 geom 碰撞类型，来自 YAML hand 段
-    hand_cfg = config.get("hand") or {}
-    hand_geom = {
-        "contype": hand_cfg.get("contype"),
-        "conaffinity": hand_cfg.get("conaffinity"),
-    }
-    if hand_geom["contype"] is not None:
-        hand_geom["contype"] = int(hand_geom["contype"])
-    if hand_geom["conaffinity"] is not None:
-        hand_geom["conaffinity"] = int(hand_geom["conaffinity"])
     obj_deform = config.get("object_deformable")
     if obj_deform is not None:
         obj_deform = bool(obj_deform)
@@ -1482,49 +1122,20 @@ def main():
     viewer_timeout_s = float(config.get("viewer_timeout_s", 30.0))
     waypoint_duration_steps = int(config.get("waypoint_duration_steps", 1500))
     hold_steps = int(config.get("hold_steps", 500))
-    
+
     # 读取速度控制参数
     vel_gain = float(config.get("vel_gain", VEL_GAIN))
     max_vel_lin = float(config.get("max_vel_lin", MAX_VEL_LIN))
     max_vel_ang = float(config.get("max_vel_ang", MAX_VEL_ANG))
     print(f"[INFO] 速度控制参数: vel_gain={vel_gain}, max_vel_lin={max_vel_lin}, max_vel_ang={max_vel_ang}")
-    
+
     # 读取 timestep 配置；过大会导致 QACC 爆炸、仿真不稳定，自动限制在安全范围
     timestep = float(config.get("timestep", 0.0005))
-    TIMESTEP_MAX = 0.01   # 超过约 10ms 易不稳定
+    TIMESTEP_MAX = 0.01  # 超过约 10ms 易不稳定
     if timestep > TIMESTEP_MAX:
         print(f"[WARN] timestep={timestep} s 过大，MuJoCo 易出现 NaN/Inf（QACC 爆炸），已限制为 {TIMESTEP_MAX} s")
         timestep = TIMESTEP_MAX
     print(f"[INFO] MuJoCo timestep: {timestep} s")
-
-    # 重力：优先 mujoco_option.gravity，其次顶层 gravity，缺省 "0 0 0"
-    mujoco_opt = config.get("mujoco_option") or {}
-    _g = config.get("gravity") or mujoco_opt.get("gravity", "0 0 0")
-    gravity = " ".join(str(x) for x in _g) if isinstance(_g, (list, tuple)) else str(_g).strip()
-    print(f"[INFO] gravity: {gravity!r}")
-    # 按键切换重力：mujoco_option.gravity_alt / gravity_toggle_key
-    _g_alt = config.get("gravity_alt") or mujoco_opt.get("gravity_alt")
-    gravity_alt: Optional[str] = None
-    if _g_alt is not None:
-        gravity_alt = " ".join(str(x) for x in _g_alt) if isinstance(_g_alt, (list, tuple)) else str(_g_alt).strip()
-    gravity_toggle_key = str(mujoco_opt.get("gravity_toggle_key", "z")).strip() or "z"
-    if gravity_alt:
-        print(f"[INFO] gravity_alt: {gravity_alt!r}, 切换键: {gravity_toggle_key!r}")
-
-    # 相机配置（Viewer 自由相机）
-    camera_cfg = config.get("camera") or {}
-    camera_lookat = None
-    if isinstance(camera_cfg.get("lookat"), (list, tuple)) and len(camera_cfg["lookat"]) >= 3:
-        camera_lookat = [float(camera_cfg["lookat"][i]) for i in range(3)]
-    camera_distance = camera_cfg.get("distance")
-    if camera_distance is not None:
-        camera_distance = float(camera_distance)
-    camera_azimuth = camera_cfg.get("azimuth")
-    if camera_azimuth is not None:
-        camera_azimuth = float(camera_azimuth)
-    camera_elevation = camera_cfg.get("elevation")
-    if camera_elevation is not None:
-        camera_elevation = float(camera_elevation)
 
     total_grasps = 0
     for npy_path in npy_files:
@@ -1548,15 +1159,6 @@ def main():
                 max_vel_lin=max_vel_lin,
                 max_vel_ang=max_vel_ang,
                 timestep=timestep,
-                camera_lookat=camera_lookat,
-                camera_distance=camera_distance,
-                camera_azimuth=camera_azimuth,
-                camera_elevation=camera_elevation,
-                object_geom=object_geom,
-                hand_geom=hand_geom,
-                gravity=gravity,
-                gravity_alt=gravity_alt,
-                gravity_toggle_key=gravity_toggle_key,
             )
             total_grasps += n_g
             if show_viewer and n_g > 0:

@@ -3,7 +3,7 @@
 import os
 import numpy as np
 
-NPY_PATH = "src/curobo/content/assets/output/test/graspdata/sem_FoodItem_d7a0fa331fd0c8dfa79a6a16f6a9c559/tabletop_ur10e/scale008_pose004_0_grasp.npy"
+NPY_PATH = "src/curobo/content/assets/output/sim_shadow/fc/debug/graspdata/core_bottle_e593aa021f3fa324530647fc03dd20dc/floating/scale008_grasp.npy"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ABS_PATH = os.path.join(ROOT, NPY_PATH)
 
